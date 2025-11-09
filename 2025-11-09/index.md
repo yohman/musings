@@ -5,6 +5,10 @@ title: Du Bois Challenge
 
 # The Du Bois Challenge: A masterful recreation or not?
 
+![alt text](image-2.png)
+
+*Figure: The original Du Bois graphic from 1890 (left), and Shion's javascript recreation in 2025 (right).*
+
 Every once in a while, as someone given the privilege to mentor and instruct young academics, you “get it right” somehow and marvel at the coalescence of an idea you were able to instill in a student—and how that scholar transformed it into something remarkable. On this particular day, in my “Introduction to Data Visualization” course, the topic was a dialogue on the relationship between the terms *“Data Visualization”* and *“Social Justice.”*  
 
 When I used to teach in the United States, social justice was a part of student life. It was the essence of being at a university—the privilege given to youth before embarking into the “real” world; a sanctuary where they are given a platform to express, critique, and create knowledge to oppose those who oppress the underprivileged. But here in Japan, where the young are in a state of stupor they nonchalantly call *“heiwa-boke,”* social justice is but a sliver of their imagination. Instead, youth in Japan are confronted with other realities that come with a largely non-violent society but are nevertheless consumed by another type of social injustice—one resulting in the suffering of so many young people who find no comfort, leading to an oddly unbalanced number of mental health predicaments.
@@ -25,6 +29,8 @@ In Du Bois’s graphic above, the green portion represents urban areas, the red 
 
 And here is Shion’s reproduction of Du Bois’s graphic, using JavaScript (specifically p5.js). What the finished product cannot fully convey is that Shion added animation—a real-time drawing of each bar’s pathway to evoke the feeling of a journey through space and time. Furthermore, Shion was somehow able to overcome the mathematical challenge of creating the spiral, which requires additional logic to ensure that it does not intersect itself—that it continues inward without overlap, terminating at its center at just the right moment.
 
+The graphics below show Shion's animation sequence of pathway from the city to the countryside:
+
 ![alt text](<shion 1.png>)
 ![alt text](<shion 2.png>)
 ![alt text](<shion 3.png>)
@@ -33,4 +39,5 @@ And here is Shion’s reproduction of Du Bois’s graphic, using JavaScript (spe
 Seen side by side, hidden within the wonder of this reproduction is the realization that, while honoring the original design, the digital version exposes striking differences—most notably the inaccuracies in the original’s segment lengths relative to their data values. 
 
 ![alt text](image-2.png)
+
 Perhaps Du Bois and his team purposefully prioritized visual harmony over numerical precision—or perhaps such deviations were simply a limitation of their tools. And maybe, just maybe, this was the romance they intentionally infused into their visual craft—the human touch that machine-based tools can no longer replicate in today’s world.
