@@ -3,5 +3,4 @@
 2025-11-09
 
 
-[The Du Bois Challenge: A masterful recreation or not?](<2025-11-09 Du Bois Challenge.md>)
-
+[The Du Bois Challenge: A masterful recreation or not?](2025-11-09/index.md)
