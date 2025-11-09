@@ -1,3 +1,8 @@
+---
+layout: default
+title: Du Bois Challenge
+---
+
 # The Du Bois Challenge: A masterful recreation or not?
 
 Every once in a while, as someone given the privilege to mentor and instruct young academics, you “get it right” somehow and marvel at the coalescence of an idea you were able to instill in a student—and how that scholar transformed it into something remarkable. On this particular day, in my “Introduction to Data Visualization” course, the topic was a dialogue on the relationship between the terms *“Data Visualization”* and *“Social Justice.”*  
