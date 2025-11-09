@@ -1,0 +1,2 @@
+# Keep it minimal; this just enables Jekyll processing.
+markdown: kramdown
