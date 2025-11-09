@@ -3,6 +3,13 @@ layout: default
 title: Du Bois Challenge
 ---
 
+<style>
+    h1 {
+        font-size: 3.5em; /* Adjust size as needed */
+        font-weight: 300; /* Thinner font style */
+    }
+</style>
+
 # The Du Bois Challenge: A masterful recreation or not?
 
 Yoh  | November 9, 2025
@@ -17,7 +24,7 @@ When I used to teach in the United States, social justice was a part of student 
 
 On this day, as I do in every lecture, I opened up a dialogue by introducing historically impactful visualizations. It is still a wonder that every bit of knowledge we produce with modern technology was, in some form, evident and produced hundreds of years ago by like-minded scholars of their time. Tools of the trade may have changed, and the ease with which we achieve results may differ, but the essence of producing visual knowledge remains the same.  
 
-The abundance of digital tools has unfortunately *de-romanticized* the value of creation—where once, with no digital tools, a single visual graphic no doubt took days, now it takes mere seconds. As such, the soul dedicated to a single production differs greatly today, evidenced by the lackluster quality of so much content. Alas, I digress—but this lecture introduced W.E.B. Du Bois. For those familiar with the history of data visualization, the name is a familiar one. For others, know that this man, born three years after slavery was abolished in the United States, dedicated his life to producing what I will call *visual justice*—a series of incredibly simple yet powerful visual anecdotes that, when seen together, tell a compelling story of the evolution of African American life and struggle in the United States.  
+The abundance of digital tools has unfortunately *de-romanticized* the value of creation—where once, with no digital tools, a single visual graphic no doubt took days, now it takes mere seconds. The heart and soul authors dedicated to their designs of the past differs greatly today, evidenced by the lackluster quality of too much digital content. Alas, I digress—this lecture introduced W.E.B. Du Bois. For those familiar with the history of data visualization, the name is a familiar one. For others, know that this man, born three years after slavery was abolished in the United States, dedicated his life to producing what I will call *visual justice*—a series of incredibly simple yet powerful visual anecdotes that, when seen together, tell a compelling story of the evolution of African American life and struggle in the United States.  
 
 At a glance, it is a fight for justice, a plea for understanding, and a reminder that African Americans are humans like all others around them. With this, I challenged my *heiwa-boke* students to “be” Du Bois in the modern era—to reproduce his graphics using modern tools. This challenge came to me on a whim, as I often do by procrastinating until the very last minute before my lectures begin—but it was a light-bulb moment: what could students with little to no drive toward social justice do with material from a different world and a different time? It was, in a sense, a reckless endeavor—one that could easily have backfired and produced little of value. But herein lies that moment I spoke of earlier—the coalescence of knowledge from a bygone era merging with that of a modern-day scholar from an entirely different world.
 
