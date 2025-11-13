@@ -1,6 +1,8 @@
 ---
 layout: default
 title: Du Bois Challenge
+title-ja: デュボイスチャレンジ
+has_japanese: true
 ---
 
 <style>
