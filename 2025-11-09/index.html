@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Du Bois Challenge: A masterful recreation or not?</title>
+    <style>
+        body {
+            max-width: 760px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.6;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            margin: 1rem 0;
+        }
+        h1 {
+            font-size: 2.5em;
+            font-weight: 300;
+            margin-top: 1.5rem;
+        }
+        h2 {
+            font-size: 1.8em;
+            font-weight: 300;
+            margin-top: 1.5rem;
+        }
+        .language-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 28px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 28px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: #2196F3;
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+        }
+        .language-labels {
+            display: flex;
+            gap: 20px;
+            font-weight: 500;
+        }
+        .lang-label {
+            cursor: pointer;
+        }
+        .lang-label.inactive {
+            opacity: 0.5;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        em {
+            font-style: italic;
+        }
+        .figure-caption {
+            font-size: 0.95em;
+            color: #666;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <!-- Language Toggle -->
+    <div class="language-toggle">
+        <div class="language-labels">
+            <span class="lang-label active" id="en-label">English</span>
+            <span class="lang-label inactive" id="ja-label">日本語</span>
+        </div>
+        <label class="toggle-switch">
+            <input type="checkbox" id="languageToggle">
+            <span class="toggle-slider"></span>
+        </label>
+    </div>
+
+    <!-- English Content -->
+    <div id="english-content" class="content-section active">
+        <h1>The Du Bois Challenge: A masterful recreation or not?</h1>
+        <p><strong>Yoh</strong> | November 9, 2025</p>
+
+        <img src="image-2.png" alt="Du Bois original and Shion's recreation">
+        <div class="figure-caption">Figure: The original Du Bois graphic from 1890 (left), and Shion's javascript recreation in 2025 (right).</div>
+
+        <p>Every once in a while, as someone given the privilege to mentor and instruct young academics, you "get it right" somehow and marvel at the coalescence of an idea you were able to instill upon a student—and how that scholar transforms it into something remarkable. On this particular day, in my "Introduction to Data Visualization" course, the topic was a dialogue on the relationship between the terms <em>"Data Visualization"</em> and <em>"Social Justice."</em></p>
+
+        <p>When I used to teach in the United States, social justice was a part of student life. It was the essence of being at a university—the privilege given to youth before embarking into the "real" world; a sanctuary where they are given a platform to express, critique, and create knowledge to oppose those who oppress the underprivileged. But here in Japan, where the young are in a state of stupor they nonchalantly call <em>"heiwa-boke,"</em> social justice is but a sliver of their imagination. Instead, youth in Japan are confronted with other realities that come with a largely non-violent society but are nevertheless consumed by another type of social injustice—one resulting in the suffering of so many young people who find no comfort, leading to an oddly unbalanced number of mental health predicaments.</p>
+
+        <p>On this day, as I do in every lecture, I opened up a dialogue by introducing historically impactful visualizations. It is still a wonder that every bit of knowledge we produce with modern technology was, in some form, evident and produced hundreds of years ago by like-minded scholars of their time. Tools of the trade may have changed, and the ease with which we achieve results may differ, but the essence of producing visual knowledge remains the same.</p>
+
+        <p>The abundance of digital tools has unfortunately <em>de-romanticized</em> the value of creation—where once, with no digital tools, a single visual graphic no doubt took days, now it takes mere seconds. The heart and soul authors dedicated to their designs of the past differs greatly today, evidenced by the lackluster quality of too much digital content. Alas, I digress—this lecture introduced W.E.B. Du Bois. For those familiar with the history of data visualization, the name is a familiar one. For others, know that this man, born three years after slavery was abolished in the United States, dedicated his life to producing what I will call <em>visual justice</em>—a series of incredibly simple yet powerful visual anecdotes that, when seen together, tell a compelling story of the evolution of African American life and struggle in the United States.</p>
+
+        <p>At a glance, it is a fight for justice, a plea for understanding, and a reminder that African Americans are humans like all others around them. With this, I challenged my <em>heiwa-boke</em> students to "be" Du Bois in the modern era—to reproduce his graphics using modern tools. This challenge came to me on a whim, as I often do by procrastinating until the very last minute before my lectures begin—but it was a light-bulb moment: what could students with little to no drive toward social justice do with material from a different world and a different time? It was, in a sense, a reckless endeavor—one that could easily have backfired and produced little of value. But herein lies that moment I spoke of earlier—the coalescence of knowledge from a bygone era merging with that of a modern-day scholar from an entirely different world.</p>
+
+        <p>And so it was that Shion, a second-year engineering student at Reitaku University, took it upon himself to reproduce one of Du Bois's most fascinating graphics—the "spiral" graph. This graphic, a stunning visual production, at a glance resembles a "bull's-eye" target, with colorful lines culminating in red circular spirals at a central core. The brilliance of this graphic lies in taking four numerical data points and producing a visually stunning display. A pie graph may suffice—but does a pie graph imply mobility? A bar graph may suffice—but does a bar graph imply distance?</p>
+
+        <img src="du bois spiral.png" alt="Du Bois spiral graphic">
+
+        <p>In Du Bois's graphic above, the green portion represents urban areas, the red spiral represents the countryside, and the other colors the areas in between. It represents a pathway—a journey one must undertake to escape the countryside and travel to the metropolis.</p>
+
+        <img src="image.png" alt="Shion's reproduction">
+
+        <p>And here is Shion's reproduction of Du Bois's graphic, using JavaScript (specifically p5.js). What the finished product cannot fully convey is that Shion added animation—a real-time drawing of each bar's pathway to evoke the feeling of a journey through space and time. Furthermore, Shion was somehow able to overcome the mathematical challenge of creating the spiral, which requires additional logic to ensure that it does not intersect itself—that it continues inward without overlap, terminating at its center at just the right moment.</p>
+
+        <p>The graphics below show Shion's animation sequence of pathway from the city to the countryside:</p>
+
+        <img src="shion 1.png" alt="Shion animation 1">
+        <img src="shion 2.png" alt="Shion animation 2">
+        <img src="shion 3.png" alt="Shion animation 3">
+        <img src="image.png" alt="Shion final">
+
+        <div class="figure-caption">Figure: See Shion's animated version here (<a href="https://editor.p5js.org/ObaShion/full/mU49dJSVU">https://editor.p5js.org/ObaShion/full/mU49dJSVU</a>).</div>
+
+        <p>Seen side by side, hidden within the wonder of this reproduction is the realization that, while honoring the original design, the digital version exposes striking differences—most notably the inaccuracies in the original's segment lengths relative to their data values.</p>
+
+        <img src="image-2.png" alt="Comparison of accuracies">
+
+        <p>Perhaps Du Bois and his team purposefully prioritized visual harmony over numerical precision—or perhaps such deviations were simply a limitation of their tools. And maybe, just maybe, this was the romance they intentionally infused into their visual craft—the human touch that machine-based tools can no longer replicate in today's world.</p>
+    </div>
+
+    <!-- Japanese Content -->
+    <div id="japanese-content" class="content-section">
+        <h1>デュボア・チャレンジ：見事な再現か？</h1>
+        <p><strong>ヨウ</strong> | 2025年11月9日</p>
+
+        <img src="image-2.png" alt="代替テキスト">
+        <div class="figure-caption">図: 1890 年のオリジナルの Du Bois グラフィック (左)、および 2025 年の Shion による JavaScript による再現 (右)。</div>
+
+        <p>若い学者を指導する立場に恵まれていると、時折、どういうわけか「正解」を導き出し、学生に植え付けたアイデアがいかにして融合し、その学者がそれをいかに素晴らしいものへと変貌させるかに驚嘆することがあります。この日は、僕が担当していた「データビジュアライゼーション入門」の授業で、「データビジュアライゼーション」と「社会正義」という用語の関係性について議論しました。</p>
+
+        <p>僕がかつてアメリカで教師をしていた頃、社会正義は学生生活の一部でした。大学生活の本質であり、「現実」の世界へと旅立つ前の若者に与えられる特権であり、恵まれない人々を抑圧する者たちに対抗するために、表現し、批判し、知識を創造するプラットフォームが与えられる聖域でした。しかし、若者たちが「平和ボケ」と呼ぶような朦朧とした状態に陥っている日本では、社会正義は彼らの想像力の片隅に過ぎません。むしろ、日本の若者たちは、概ね非暴力的な社会に伴う別の現実に直面しながらも、別の種類の社会的不正義に呑み込まれています。その不正義は、多くの若者が安らぎを見出せず苦しみ、奇妙なほど不均衡な数の精神疾患を抱えることにつながっています。</p>
+
+        <p>この日も、いつもの講義と同様に、歴史的に影響力のある視覚化を紹介することで対話のきっかけを作りました。現代の技術によって生み出されるあらゆる知識が、何百年も前に、同じ志を持つ学者によって何らかの形で明らかにされ、生み出されていたというのは、今なお驚くべきことです。仕事の道具は変化し、結果を得る容易さも変化したかもしれませんが、視覚的な知識を生み出すことの本質は変わりません。</p>
+
+        <p>デジタルツールの豊富さは、残念ながら創作の価値を非ロマンチックなものにしてしまいました。かつてはデジタルツールもなく、1つのビジュアルグラフィックを作るのに間違いなく何日もかかっていましたが、今ではたった数秒でできてしまいます。かつてデザインに心血を注いだ作者たちは、今では大きく異なっており、それは過剰なデジタルコンテンツの質の低さからも明らかです。話が逸れましたが、この講義ではWEB Du Boisを紹介しました。データビジュアライゼーションの歴史に詳しい人にとっては、その名前はおなじみでしょう。そうでない方には、米国で奴隷制度が廃止されてから3年後に生まれたこの人物が、僕がビジュアルジャスティスと呼ぶものを生み出すことに人生を捧げたことを知っておいてください。ビジュアルジャスティスは、信じられないほどシンプルでありながら力強い一連のビジュアル逸話で、まとめて見ると、米国におけるアフリカ系アメリカ人の生活と闘争の進化についての説得力のある物語が語られます。</p>
+
+        <p>一見すると、これは正義のための戦いであり、理解を求める嘆願であり、アフリカ系アメリカ人も周りの人々と同じ人間であるということを思い出させるものである。僕は平和ボケの学生たちに、現代におけるデュボイス「のよう」に、つまり現代のツールを使って彼のグラフィックを再現するよう挑戦した。この挑戦は、講義が始まる直前まで先延ばしにすることでよくあるように、思いつきで思いついたものだった。しかし、それは僕にとってひらめきの瞬間だった。アメリカ人の学生と比べて社会正義への意欲があまりない日本の学生たちが、異なる世界、異なる時代の資料を使って何ができるだろうか？ある意味では無謀な試みだった。簡単に裏目に出て、ほとんど価値のないものを生み出せた可能性もあった。しかし、ここに、先ほど述べた、過ぎ去った時代の知識と、全く異なる世界から来た現代の学者の知識が融合した瞬間があったのだ。</p>
+
+        <p>こうして、麗澤大学工学部2年生のShionは、デュボイスの最も魅力的なグラフの一つである「スパイラルグラフ」を自ら再現することにした。この見事な視覚的表現は、一見すると「ブルズアイ」の標的を思わせる。カラフルな線が中心の赤い螺旋へと繋がっていく。このグラフの真価は、4つの数値データポイントを用いて、視覚的にも衝撃的な表示を生み出している点にある。円グラフで十分かもしれないが、円グラフは移動性を表しているのだろうか？棒グラフで十分かもしれないが、棒グラフは距離を表しているのだろうか？</p>
+
+        <img src="du bois spiral.png" alt="代替テキスト">
+
+        <p>デュボイスの上の図では、緑の部分が都市部、赤い螺旋部分が田園地帯、そして残りの部分がその中間の地域を表しています。これは、田園地帯を抜け出して大都市へと向かうための道のり、つまり「道」を表しています。</p>
+
+        <img src="image.png" alt="代替テキスト">
+
+        <p>そしてこちらが、ShionがJavaScript（具体的にはp5.js）を使ってDu Boisのグラフィックを再現した作品です。完成版では伝わりきらないのは、Shionがアニメーションを追加したことです。それぞれのバーの軌跡をリアルタイムで描画することで、時空を旅しているかのような感覚を喚起しています。さらに、Shionは螺旋を描くという数学的な難題を何とか克服しました。螺旋が交差しないようにするための追加のロジックが必要で、螺旋が重なることなく内側に進み、ちょうど良いタイミングで中心に到達します。</p>
+
+        <p>以下のグラフィックは、都市から田舎への道を示す Shion のアニメーション シーケンスを示しています。</p>
+
+        <img src="shion 1.png" alt="代替テキスト">
+        <img src="shion 2.png" alt="代替テキスト">
+        <img src="shion 3.png" alt="代替テキスト">
+        <img src="image.png" alt="代替テキスト">
+
+        <div class="figure-caption">図: Shion のアニメーションバージョンは、<a href="https://editor.p5js.org/ObaShion/full/mU49dJSVU">こちら</a> でご覧いただけます。</div>
+
+        <p>並べて見ると、この複製の驚異の中に、オリジナルのデザインを尊重しながらも、デジタル版では著しい違いが明らかになるという認識が隠されています。最も顕著な違いは、オリジナルのセグメントの長さがデータ値に比べて不正確であることです。</p>
+
+        <img src="image-2.png" alt="代替テキスト">
+
+        <p>デュボイスと彼のチームは、数値的な精度よりも視覚的な調和を意図的に優先したのかもしれません。あるいは、こうした差異は単にツールの限界だったのかもしれません。そしてもしかしたら、これこそが彼らが意図的に視覚作品に注ぎ込んだロマンスだったのかもしれません。現代社会において、機械ベースのツールではもはや再現できない人間的なタッチなのです。</p>
+    </div>
+
+    <script>
+        const toggle = document.getElementById('languageToggle');
+        const englishContent = document.getElementById('english-content');
+        const japaneseContent = document.getElementById('japanese-content');
+        const enLabel = document.getElementById('en-label');
+        const jaLabel = document.getElementById('ja-label');
+
+        toggle.addEventListener('change', function() {
+            if (this.checked) {
+                englishContent.classList.remove('active');
+                japaneseContent.classList.add('active');
+                enLabel.classList.add('inactive');
+                jaLabel.classList.remove('inactive');
+            } else {
+                englishContent.classList.add('active');
+                japaneseContent.classList.remove('active');
+                enLabel.classList.remove('inactive');
+                jaLabel.classList.add('inactive');
+            }
+        });
+    </script>
+</body>
+</html>
