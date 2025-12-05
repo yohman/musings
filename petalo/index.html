@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Petalo Stamps over Japan</title>
+  <link
+    href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --ink: #0a0a0a;
+      --paper: #f7f7f7;
+      --muted: rgba(0, 0, 0, 0.08);
+      --shadow: rgba(0, 0, 0, 0.08);
+      --quote-font: "Georgia", "Times New Roman", serif;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+    }
+    #map {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+    #canvas-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+    }
+    body.canvas-mode #canvas-layer {
+      pointer-events: auto;
+    }
+    #controls {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      gap: 10px;
+      pointer-events: none;
+    }
+    #logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    #logo svg {
+      height: 40px;
+      width: auto;
+      display: block;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+    }
+    #mode-toggle {
+      pointer-events: auto;
+      background: #fff;
+      color: #222;
+      border: 1px solid rgba(0, 0, 0, 0.25);
+      border-radius: 4px;
+      padding: 8px 14px;
+      font-size: 13px;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    }
+    #mode-toggle:hover {
+      background: #f5f5f5;
+    }
+    #mode-toggle:active {
+      background: #ededed;
+    }
+    /* Keep the basemap barely visible but leave markers crisp */
+    .maplibregl-canvas {
+      filter: grayscale(1) contrast(0.75) brightness(1.05);
+      opacity: 0.32;
+      background: var(--paper);
+    }
+    .maplibregl-control-container {
+      display: none;
+    }
+    body.canvas-mode .maplibregl-canvas {
+      opacity: 0;
+    }
+    body.canvas-mode #map {
+      pointer-events: none;
+    }
+    .maplibregl-marker {
+      position: absolute;
+      top: 0;
+      left: 0;
+      will-change: transform;
+    }
+    .stamp-shell {
+      width: 36px;
+      height: 36px;
+      position: absolute;
+      transition: left 750ms ease, top 750ms ease;
+    }
+    .stamp {
+      --twist: 0deg;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transform: scale(0.6) rotate(var(--twist));
+      transition: opacity 700ms ease, transform 700ms ease;
+      cursor: pointer;
+      position: relative;
+      color: var(--ink);
+    }
+    .stamp.visible {
+      opacity: 0.88;
+      transform: scale(1) rotate(var(--twist));
+    }
+    .stamp.fading-out {
+      opacity: 0;
+      transform: scale(0.4) rotate(var(--twist));
+    }
+    .stamp.hovered {
+      opacity: 1;
+      transform: scale(1.45) rotate(var(--twist));
+      z-index: 20;
+    }
+    .stamp svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0.5px 1px var(--shadow));
+    }
+    .stamp .quote {
+      --quote-shift: 0px;
+      --quote-lift: 0px;
+      position: absolute;
+      left: 50%;
+      bottom: 110%;
+      transform: translate(calc(-50% + var(--quote-shift, 0px)), var(--quote-lift, 0px));
+      font-family: var(--quote-font);
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: 0.2px;
+      color: var(--ink);
+      padding: 6px 10px;
+      width: clamp(180px, 60vw, 240px);
+      max-width: 92vw;
+      overflow-wrap: break-word;
+      text-align: center;
+      white-space: normal;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(2px);
+      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.65);
+      opacity: 0;
+      transition: opacity 200ms ease;
+      pointer-events: none;
+    }
+    .stamp.hovered .quote {
+      opacity: 1;
+    }
+    .quote .signature {
+      display: block;
+      margin-top: 6px;
+      font-size: 8px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="canvas-layer"></div>
+  <div id="controls">
+    <div id="logo" aria-label="Petalo logo">
+      <svg viewBox="0 0 200 60" role="img" aria-hidden="true">
+        <g fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M30 40c-8 0-14-6-14-14s6-14 14-14 14 6 14 14-6 14-14 14z" />
+          <path d="M30 12c3 6 3 12 0 18-3-6-3-12 0-18z" />
+          <path d="M18 22c6 3 12 3 18 0-6-3-12-3-18 0z" />
+        </g>
+        <text x="64" y="38" font-family="Helvetica, Arial, sans-serif" font-size="20" fill="black" letter-spacing="2">PETALO</text>
+      </svg>
+    </div>
+    <button id="mode-toggle" type="button">Canvas mode</button>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+  <script>
+    const EMBEDDED_DATA = [{"comment": "ゆうさんの挑戦が実を結んで、もっと多くの人が幸せになることを祈っております！", "pledge_datetime": "2025-10-10", "user_name": "本の虫", "ship_prefecture": "兵庫県", "lat": 34.734142, "lon": 135.401062}, {"comment": "始まりましたね！何より心身をくれぐれも労わりながら、頑張ってください??", "pledge_datetime": "2025-10-10", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "始まりましたね！何より心身をくれぐれも労わりながら、頑張ってください??", "pledge_datetime": "2025-10-10", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "造る人と観る人の間の壁を乗り越える素晴らしいプロダクト。私も多くの人に広げていきます", "pledge_datetime": "2025-10-10", "user_name": "もと", "ship_prefecture": "東京都", "lat": 35.705086, "lon": 139.739594}, {"comment": "山口県からの元気玉です！\n応援してますよー?", "pledge_datetime": "2025-10-10", "user_name": "澤村健一", "ship_prefecture": "山口県", "lat": 33.961975, "lon": 131.310165}, {"comment": "応援しています！", "pledge_datetime": "2025-10-10", "user_name": "うめぞー", "ship_prefecture": "栃木県", "lat": 36.559219, "lon": 139.83493}, {"comment": "PETALOの触り心地、シンプルながら奥深いスタンプを皆さんに体験してもらいたいです！紅茶もすごく美味しいので楽しみ！応援しています！", "pledge_datetime": "2025-10-10", "user_name": "大友聡", "ship_prefecture": "千葉県", "lat": 35.873096, "lon": 140.006561}, {"comment": "C’s CREATIVE の挑戦は、地域に根ざした一人ひとりのcreativeの力を「見える形」にする試み。2年の準備で磨かれたプロジェクトに、いまこそ社会の側から投資という意思表示を。私が大切にしたい「らしさ」に真摯に向き合い続ける大坪さん「C’s CREATIVE」を応援しています。クラファンの新たなジャーニーへ行ってらっしゃい。\n応援しています。良いスタートダッシュになりますように。", "pledge_datetime": "2025-10-10", "user_name": "綿貫   哲", "ship_prefecture": "秋田県", "lat": 39.715282, "lon": 140.101013}, {"comment": "新たな挑戦心から応援しています！あったかい想いの輪が広がりますように。", "pledge_datetime": "2025-10-10", "user_name": "矢島奈津子", "ship_prefecture": "東京都", "lat": 35.699909, "lon": 139.511826}, {"comment": "ゆうさんとNHUMAという素敵な空間で得られる感覚と出会いが大好きです。いつも応援しています。", "pledge_datetime": "2025-10-10", "user_name": "chika mochizuki", "ship_prefecture": "東京都", "lat": 35.689503, "lon": 139.691727}, {"comment": "ゆうさんの資料拝見してから、温かい気持ちになりました。関わる人全員が心地よく、そして誰もが自分を表現できて、自分の背中を押してくれる、そんな存在に感じました。\n絵の苦手な私でも、やってみたい気持ちでいっぱいです！応援しています?", "pledge_datetime": "2025-10-10", "user_name": "押 範之", "ship_prefecture": "千葉県", "lat": 35.615597, "lon": 140.121307}, {"comment": "素晴らしい方の、素晴らしい取り組み！\n応援してます。", "pledge_datetime": "2025-10-10", "user_name": "ないとー", "ship_prefecture": "北海道", "lat": 43.115181, "lon": 141.364197}, {"comment": "ペタロの始動を心待ちにしております！作る楽しみや、自己表現の喜びを取り戻すことは大事で、生きていくことに必要なことだなぁと共感しております。\nNHUMA TO GOの構想にワクワクするとともに、いつでも動けるようにストレッチしてます！！", "pledge_datetime": "2025-10-10", "user_name": "押早奈美", "ship_prefecture": "千葉県", "lat": 35.615597, "lon": 140.121307}, {"comment": "ゆうさん　\"As a cup of warm soup\"な温かい場作り、いつもありがとうございます。PETALOは、一人ひとりの笑顔や隠れた能力を引き出し、世の中を幸せにする魔法だと思います。挑戦応援しています！！", "pledge_datetime": "2025-10-10", "user_name": "けにー", "ship_prefecture": "愛知県", "lat": 35.120296, "lon": 137.055923}, {"comment": "ペタロのはじまり、楽しみです！", "pledge_datetime": "2025-10-10", "user_name": "sho", "ship_prefecture": "千葉県", "lat": 35.875061, "lon": 140.016464}, {"comment": "NHUMAは、“こう生きたい”を形にしてみる場所だと感じています。\n人と人との信頼を、社会のエネルギーに変えていく挑戦と、押すたびに形も色も少しずつ違って、その偶然が「らしさ」や「自由」を教えてくれるペタロという相棒が、より多くの方の手に届くことを心から応援しております！", "pledge_datetime": "2025-10-10", "user_name": "ふくもと", "ship_prefecture": "東京都", "lat": 35.714081, "lon": 139.836655}, {"comment": "ゆうさんのあの笑顔に、またあいたいから応援します。PETALOを使ったワークショップやりましょー", "pledge_datetime": "2025-10-10", "user_name": "HIROYUKI EGAMI", "ship_prefecture": "東京都", "lat": 35.630569, "lon": 139.714874}, {"comment": "はじめて訪問したとき、テーブル中に押されたスタンプたちと、その組み合わせの楽しさが天才的！でした。絵には自信がないから…と、描くことを遠慮するのはもったいない！「インクをつけてスタンプする」それだけでクリエーションが広がるPETALOを応援します！", "pledge_datetime": "2025-10-10", "user_name": "minecco", "ship_prefecture": "東京都", "lat": 35.729752, "lon": 139.72403}, {"comment": "応援しています！", "pledge_datetime": "2025-10-10", "user_name": "わか", "ship_prefecture": "東京都", "lat": 35.655613, "lon": 139.778244}, {"comment": "応援しています！", "pledge_datetime": "2025-10-10", "user_name": "松岡 俊樹", "ship_prefecture": "東京都", "lat": 35.637238, "lon": 139.73381}, {"comment": "素敵な世界観応援したいです！", "pledge_datetime": "2025-10-10", "user_name": "峯岸 明美", "ship_prefecture": "千葉県", "lat": 35.877018, "lon": 140.043289}, {"comment": "心の中で三回唱え、ヒーロー見参、ヒーロー見参、ヒーロー見参……そーすりゃ必ずゆうさん応援団がやってくる！", "pledge_datetime": "2025-10-10", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "心の中で三回唱え、ヒーロー見参、ヒーロー見参、ヒーロー見参……そーすりゃ必ずゆうさん応援団がやってくる！", "pledge_datetime": "2025-10-10", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "ゆうさんたちの活動に、いつも勇気と元気をもらってます！ありがとうございます！！", "pledge_datetime": "2025-10-10", "user_name": "kiyo", "ship_prefecture": "東京都", "lat": 35.603687, "lon": 139.643127}, {"comment": "応援しています！", "pledge_datetime": "2025-10-10", "user_name": "Feliz", "ship_prefecture": "千葉県", "lat": 35.81506, "lon": 139.96936}, {"comment": "ゆうさんの挑戦が花開くことを心から祈っております", "pledge_datetime": "2025-10-10", "user_name": "堀江雅彦", "ship_prefecture": "福岡県", "lat": 33.876492, "lon": 130.881805}, {"comment": "心から応援してます！！\nゆみこさんが作り出す空間が大好きです。どんどん広がっていくことを願ってます", "pledge_datetime": "2025-10-11", "user_name": "まさ", "ship_prefecture": "兵庫県", "lat": 34.688961, "lon": 135.200714}, {"comment": "これからも応援しています！！", "pledge_datetime": "2025-10-11", "user_name": "ひろき", "ship_prefecture": "福岡県", "lat": 33.578396, "lon": 130.399979}, {"comment": "ゆうさん、ワクワクしてプロジェクト見させてもらいました！これからも応援してます！", "pledge_datetime": "2025-10-11", "user_name": "あきやまとしえ", "ship_prefecture": "岡山県", "lat": 34.67379, "lon": 133.844528}, {"comment": "心から応援していますよ！！ゆうさんらしく、このクラファンも広まりますように！！", "pledge_datetime": "2025-10-11", "user_name": "くーさん", "ship_prefecture": "千葉県", "lat": 35.88868, "lon": 139.976135}, {"comment": "PETAROで「ぼく、かかない。」な自分を卒業します！友人として、千葉県民として応援しています^ ^", "pledge_datetime": "2025-10-11", "user_name": "中村 直太", "ship_prefecture": "千葉県", "lat": 35.871799, "lon": 139.919235}, {"comment": "大坪さんが想いをこめてカタチにされたNHUMAは本当に素敵な空間で、訪れた人はみんな優しくてほっこり気持ちになりますね。応援してます！！", "pledge_datetime": "2025-10-11", "user_name": "くらもち", "ship_prefecture": "千葉県", "lat": 35.656982, "lon": 139.89772}, {"comment": "ゆうさん、応援してます！素敵な活動が広がるといいですね！頑張ってください^_^", "pledge_datetime": "2025-10-11", "user_name": "やまも", "ship_prefecture": "福岡県", "lat": 33.519527, "lon": 130.466812}, {"comment": "大坪さんの夢が叶いますように!", "pledge_datetime": "2025-10-11", "user_name": "yohei asano", "ship_prefecture": "大阪府", "lat": 34.578056, "lon": 135.55191}, {"comment": "応援をしています！これからますます想いが広がりますように。", "pledge_datetime": "2025-10-11", "user_name": "Tadahiro Wakasugi", "ship_prefecture": "東京都", "lat": 35.718739, "lon": 139.683151}, {"comment": "ほんとにほんとに微力ながら応援させていただきます！", "pledge_datetime": "2025-10-11", "user_name": "Kengo", "ship_prefecture": "神奈川県", "lat": 35.346653, "lon": 139.444427}, {"comment": "影ながら応援してます！\n頑張ってください", "pledge_datetime": "2025-10-11", "user_name": "natsuki", "ship_prefecture": "福岡県", "lat": 33.580105, "lon": 130.329727}, {"comment": "応援しています！", "pledge_datetime": "2025-10-11", "user_name": "ぎり", "ship_prefecture": "千葉県", "lat": 35.869091, "lon": 140.007935}, {"comment": "実現できますよーに！激烈応援?しちょるよーーーん。", "pledge_datetime": "2025-10-11", "user_name": "Churi", "ship_prefecture": "東京都", "lat": 35.628559, "lon": 139.664062}, {"comment": "心ばかりですが、心から応援しています！\n自由に表現できて、周りの人にも自分自身にも発見がある、つながりが生まれる、なんて優しい道具なんだろうと思います。\n頑張ってください。", "pledge_datetime": "2025-10-12", "user_name": "美和 菊地", "ship_prefecture": "千葉県", "lat": 35.874512, "lon": 140.028061}, {"comment": "花が実りますように！微力ながら、応援していますっ！！", "pledge_datetime": "2025-10-12", "user_name": "tadatoshi yamamoto", "ship_prefecture": "大阪府", "lat": 34.617615, "lon": 135.523834}, {"comment": "本当に微力ですが、少しでもお力になれたら嬉しいです！応援しています！", "pledge_datetime": "2025-10-12", "user_name": "あだち", "ship_prefecture": "愛知県", "lat": 35.306889, "lon": 136.858749}, {"comment": "応援しています！\nアートの力　すごいと思います！！", "pledge_datetime": "2025-10-12", "user_name": "jolly", "ship_prefecture": "神奈川県", "lat": 35.366795, "lon": 139.560593}, {"comment": "微力ながら応援しております！", "pledge_datetime": "2025-10-12", "user_name": "keiko 11", "ship_prefecture": "千葉県", "lat": 35.880226, "lon": 140.015732}, {"comment": "応援しています！", "pledge_datetime": "2025-10-12", "user_name": "おおちゃんぶり", "ship_prefecture": "福岡県", "lat": 33.867802, "lon": 130.865097}, {"comment": "ゆみちゃんの新たな挑戦を応援しています。", "pledge_datetime": "2025-10-12", "user_name": "Mi5", "ship_prefecture": "東京都", "lat": 35.647205, "lon": 139.631958}, {"comment": "応援してます！", "pledge_datetime": "2025-10-12", "user_name": "とめいと", "ship_prefecture": "東京都", "lat": 35.607647, "lon": 139.675827}, {"comment": "大坪さん、頑張って！頑張って！そして頑張って?", "pledge_datetime": "2025-10-12", "user_name": "つよぽん", "ship_prefecture": "大阪府", "lat": 34.643051, "lon": 135.514114}, {"comment": "素敵だなーと思い、気持ちばかりですが是非、応援したいなと思いました！！", "pledge_datetime": "2025-10-12", "user_name": "Riama-k", "ship_prefecture": "千葉県", "lat": 35.87188, "lon": 140.008606}, {"comment": "応援しています！", "pledge_datetime": "2025-10-12", "user_name": "Makiko", "ship_prefecture": "千葉県", "lat": 35.868607, "lon": 140.002701}, {"comment": "創造する先に、ステキな笑顔や出会いがたくさんありますように。応援しています！", "pledge_datetime": "2025-10-12", "user_name": "モリタインボウ", "ship_prefecture": "京都府", "lat": 35.0056, "lon": 135.761337}, {"comment": "スタンプのデザイン、ハンドルの滑らかさ、とても素敵です。\n祐三子さん、応援しています！", "pledge_datetime": "2025-10-12", "user_name": "Mari", "ship_prefecture": "千葉県", "lat": 35.86681, "lon": 140.013412}, {"comment": "応援してます！！", "pledge_datetime": "2025-10-12", "user_name": "高木和博", "ship_prefecture": "東京都", "lat": 35.74667, "lon": 139.687927}, {"comment": "みんなのためにいつも頑張っている?お花が咲いたみたいに?とっても可愛い笑顔のゆうさんが大好きです！　いつもずっと。。応援しています！！", "pledge_datetime": "2025-10-12", "user_name": "けい", "ship_prefecture": "千葉県", "lat": 35.875385, "lon": 139.994217}, {"comment": "応援しています！", "pledge_datetime": "2025-10-12", "user_name": "綿貫里美", "ship_prefecture": "香川県", "lat": 34.303936, "lon": 133.814468}, {"comment": "これからもそうやって、我孫子の仲間の思いを乗せて天下の大将軍にかけ上がるんだ", "pledge_datetime": "2025-10-12", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "これからもそうやって、我孫子の仲間の思いを乗せて天下の大将軍にかけ上がるんだ", "pledge_datetime": "2025-10-12", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "いつもSNSで活動を拝見しています！この活動も応援しています！", "pledge_datetime": "2025-10-13", "user_name": "taku", "ship_prefecture": "滋賀県", "lat": 35.048409, "lon": 135.983627}, {"comment": "キラキラした瞳で夢を語るゆうさん。\n影ながらずっと応援してきましたよ。\n今回も微力ですが…\nゆうさんの笑顔をみたくて…", "pledge_datetime": "2025-10-13", "user_name": "よっしー", "ship_prefecture": "千葉県", "lat": 35.867275, "lon": 140.11615}, {"comment": "ゆうさんのチャレンジが成功しますように！応援してます?", "pledge_datetime": "2025-10-13", "user_name": "まえちゃん", "ship_prefecture": "千葉県", "lat": 35.804211, "lon": 139.917236}, {"comment": "素敵な企画、応援しています", "pledge_datetime": "2025-10-13", "user_name": "egu-nami", "ship_prefecture": "千葉県", "lat": 35.985043, "lon": 139.840134}, {"comment": "大坪さん、応援しています！", "pledge_datetime": "2025-10-13", "user_name": "arima", "ship_prefecture": "東京都", "lat": 35.652122, "lon": 139.723175}, {"comment": "応援しています！", "pledge_datetime": "2025-10-13", "user_name": "mocchi", "ship_prefecture": "東京都", "lat": 35.71022, "lon": 139.443481}, {"comment": "わずかばかりの支援で恐縮ですが、陰ながら応援しております。いつも熱量高く様々な活動をされている祐三子さんのエネルギーの高さに私自身感化されています。またお話し聞かせてください。", "pledge_datetime": "2025-10-13", "user_name": "こーじ", "ship_prefecture": "茨城県", "lat": 36.390263, "lon": 140.534225}, {"comment": "応援しています！　4月のリトリート楽しみです！", "pledge_datetime": "2025-10-13", "user_name": "河野将典", "ship_prefecture": "愛知県", "lat": 35.183502, "lon": 136.698044}, {"comment": "応援しています！", "pledge_datetime": "2025-10-13", "user_name": "cozz", "ship_prefecture": "山口県", "lat": 34.060917, "lon": 131.804245}, {"comment": "いつも元気でニコニコ明るいゆうさん?みんなの太陽みたいな存在で、心から応援しています！ファイティン?", "pledge_datetime": "2025-10-13", "user_name": "Chihiro Kawabata", "ship_prefecture": "愛知県", "lat": 35.197201, "lon": 136.859299}, {"comment": "いつもそっと背中を押してくれるパワフルゆうさん。\n新しいステージに届きますように！！応援しています。", "pledge_datetime": "2025-10-13", "user_name": "Ayumi", "ship_prefecture": "千葉県", "lat": 35.867729, "lon": 140.020538}, {"comment": "とても素敵な商品ですね！クリエイティビティには「手で考える」ことが必要で、多くの人が感じる恐れを取り除いてくれると思います。応援しています！！", "pledge_datetime": "2025-10-13", "user_name": "ぶん", "ship_prefecture": "東京都", "lat": 35.61808, "lon": 139.325439}, {"comment": "これは達成するし、成功するだろうなあ・・・と思いながら、支援させてもらいました。活動、心から応援しております！", "pledge_datetime": "2025-10-14", "user_name": "ひなた", "ship_prefecture": "千葉県", "lat": 35.897339, "lon": 139.958069}, {"comment": "応援しています！", "pledge_datetime": "2025-10-14", "user_name": "鈴木忍", "ship_prefecture": "千葉県", "lat": 35.866539, "lon": 140.01413}, {"comment": "ゆうさんの愛と希望と優しさがPETAL Oを通じてもっと色々な場所に、様々な人たちに広がっていきますように！", "pledge_datetime": "2025-10-14", "user_name": "まどまど", "ship_prefecture": "千葉県", "lat": 35.702267, "lon": 140.015137}, {"comment": "いつも、愛と勇気をありがとう！ゆうさんの世界をよりよくしていく挑戦にいつも元気をもらっています。このアソートで世界が少しでもクリエイティブに、豊かになりますように。", "pledge_datetime": "2025-10-14", "user_name": "S N", "ship_prefecture": "静岡県", "lat": 34.706627, "lon": 137.726273}, {"comment": "応援しています！", "pledge_datetime": "2025-10-15", "user_name": "KAOKOMA", "ship_prefecture": "東京都", "lat": 35.752918, "lon": 139.809937}, {"comment": "いつもありがとうございます。応援しております！引き続き宜しくお願い致します！", "pledge_datetime": "2025-10-15", "user_name": "Ryuichi Okuno", "ship_prefecture": "千葉県", "lat": 35.402115, "lon": 140.194885}, {"comment": "心から尊敬しています。頑張らずにがんばってください。", "pledge_datetime": "2025-10-15", "user_name": "Y.Atobe", "ship_prefecture": "東京都", "lat": 35.746387, "lon": 139.610794}, {"comment": "Love your concept!", "pledge_datetime": "2025-10-15", "user_name": "SumomoLee", "ship_prefecture": "千葉県", "lat": 35.763241, "lon": 140.048538}, {"comment": "応援しています！", "pledge_datetime": "2025-10-15", "user_name": "ルーク", "ship_prefecture": "千葉県", "lat": 35.868484, "lon": 140.012985}, {"comment": "ゆうさん、ビジョンリトリートでは素敵な空間ありがとうございました。あの空間で過ごす時間がすごく大好きです。たくさんの人に体験してもらいたい！ゆうさんの活動応援しています！", "pledge_datetime": "2025-10-15", "user_name": "Noriko", "ship_prefecture": "栃木県", "lat": 36.566269, "lon": 139.997879}, {"comment": "ゆうさんからいつもたくさんの学びを頂いてます！ささやかながら応援させてください！", "pledge_datetime": "2025-10-16", "user_name": "翔一 山本", "ship_prefecture": "千葉県", "lat": 35.742466, "lon": 139.914932}, {"comment": "テクストからNHUMA壁打ちにも同席させていただき、その熱意に触れてワクワクしながら応援しています！", "pledge_datetime": "2025-10-16", "user_name": "小林悦子", "ship_prefecture": "埼玉県", "lat": 35.786316, "lon": 139.625809}, {"comment": "テクストからNHUMA壁打ちにも同席させていただき、その熱意に触れてワクワクしながら応援しています！", "pledge_datetime": "2025-10-16", "user_name": "小林悦子", "ship_prefecture": "埼玉県", "lat": 35.786316, "lon": 139.625809}, {"comment": "ゆうさん！微力ながら活動を応援しています??", "pledge_datetime": "2025-10-16", "user_name": "川口 遼馬", "ship_prefecture": "滋賀県", "lat": 35.048607, "lon": 135.990921}, {"comment": "いつもありがとう。繋がっていられることに感謝を込めて??", "pledge_datetime": "2025-10-17", "user_name": "KURAKAO", "ship_prefecture": "東京都", "lat": 35.564156, "lon": 139.68483}, {"comment": "ゆうさんならきっと、心地の良い空間をみんなのために作ってくれると思います。応援しています。", "pledge_datetime": "2025-10-18", "user_name": "みやちゃん", "ship_prefecture": "愛知県", "lat": 35.116951, "lon": 137.001953}, {"comment": "ゆうさんの挑戦を応援しています", "pledge_datetime": "2025-10-18", "user_name": "せーさん", "ship_prefecture": "東京都", "lat": 35.7286, "lon": 139.880676}, {"comment": "応援しています。素晴らしい??頑張ってください。", "pledge_datetime": "2025-10-18", "user_name": "Jerry", "ship_prefecture": "千葉県", "lat": 35.891621, "lon": 139.977081}, {"comment": "世の中に楽しい場所と時間をたくさん作ってください", "pledge_datetime": "2025-10-19", "user_name": "cozy", "ship_prefecture": "東京都", "lat": 35.707939, "lon": 139.729797}, {"comment": "いつも猪突猛進な猪のようなしっしーことゆうさん:)\nクリエイティブなマインドがこれからの日本を支えていく石杖になる！\nその手法の一つとしてのPETALOを応援しています！", "pledge_datetime": "2025-10-19", "user_name": "Sakurako Nibe", "ship_prefecture": "東京都", "lat": 35.70335, "lon": 139.790253}, {"comment": "いつもありがとう！\nゆみこさんの愛が必要とされる場所に届きますように?\nささやかですが、支援を送ります。\n体を大事に最後まで駆け抜けてくださいね。", "pledge_datetime": "2025-10-20", "user_name": "うな", "ship_prefecture": "千葉県", "lat": 35.874687, "lon": 140.005981}, {"comment": "いつもありがとう！\nゆみこさんの愛が必要とされる場所に届きますように?\nささやかですが、支援を送ります。\n体を大事に最後まで駆け抜けてくださいね。", "pledge_datetime": "2025-10-20", "user_name": "うな", "ship_prefecture": "千葉県", "lat": 35.874687, "lon": 140.005981}, {"comment": "初めてクラウドファウンディングでご支援させていただきます！\nPETALOとても素敵ですね?\n挑戦応援しております！", "pledge_datetime": "2025-10-20", "user_name": "なおっき", "ship_prefecture": "埼玉県", "lat": 35.813465, "lon": 139.659653}, {"comment": "応援してまーす！！！頑張ってください?", "pledge_datetime": "2025-10-20", "user_name": "小林徹", "ship_prefecture": "東京都", "lat": 35.711807, "lon": 139.567703}, {"comment": "この画材があれば、絵の下手な自分でも素敵な絵が描けるのかなととてもワクワクしました♪主催者のゆうさんのお人柄が滲み出いる素敵な画材だなと感じます！応援しています♪", "pledge_datetime": "2025-10-21", "user_name": "ゆうか", "ship_prefecture": "奈良県", "lat": 34.694389, "lon": 135.781097}, {"comment": "潜在的なニーズ、インサイトに迫るプロダクト、サービスだと思います。\n頑張ってくださいね。", "pledge_datetime": "2025-10-21", "user_name": "Tokuhisa Ishii", "ship_prefecture": "神奈川県", "lat": 35.297813, "lon": 139.578094}, {"comment": "微力ですが、ゆうさんのチャレンジを心から応援しております！いつもゆうさんからわたしたちもがんばろう、と勇気と前向きなパワーをいただいています。いつもありがとう～！", "pledge_datetime": "2025-10-22", "user_name": "KahoKavi", "ship_prefecture": "千葉県", "lat": 35.864601, "lon": 140.023453}, {"comment": "大坪さんのその信念に！「ビリビリしたァ??」  手賀沼で夕陽をまったり観る仲間より", "pledge_datetime": "2025-10-22", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "ペタロ、触って使って気持ちよかったです。ちょっとお手伝いしたいと思いました。", "pledge_datetime": "2025-10-22", "user_name": "いくお", "ship_prefecture": "千葉県", "lat": 35.843742, "lon": 139.99437}, {"comment": "ささやかですが応援させてください！がんばれー！", "pledge_datetime": "2025-10-22", "user_name": "こて", "ship_prefecture": "京都府", "lat": 34.872871, "lon": 135.78154}, {"comment": "大坪さん！この度は素晴らしいチャレンジ、応援しています。新たなアートの世界広げてください。", "pledge_datetime": "2025-10-22", "user_name": "鬼束有希", "ship_prefecture": "茨城県", "lat": 35.925526, "lon": 140.145752}, {"comment": "頑張っていきましょー！！", "pledge_datetime": "2025-10-23", "user_name": "澤村健一", "ship_prefecture": "山口県", "lat": 33.969315, "lon": 131.307983}, {"comment": "最後まで頑張ってください。応援しています", "pledge_datetime": "2025-10-24", "user_name": "田中秀典", "ship_prefecture": "神奈川県", "lat": 35.399387, "lon": 139.565826}, {"comment": "応援しています！", "pledge_datetime": "2025-10-24", "user_name": "masho", "ship_prefecture": "東京都", "lat": 35.629921, "lon": 139.751251}, {"comment": "ゆうさんの描くクリエイティブでやさしい世界がもっと広がりますよう微力ながら応援しています！！", "pledge_datetime": "2025-10-24", "user_name": "持丸理緒", "ship_prefecture": "千葉県", "lat": 35.868019, "lon": 140.010086}, {"comment": "いつも笑顔が素敵なゆうさん、応援しています??", "pledge_datetime": "2025-10-25", "user_name": "Yuuki", "ship_prefecture": "神奈川県", "lat": 35.604584, "lon": 139.563858}, {"comment": "心の支えの人であり、場所であります。\n日ごろの感謝と、”日常に創造を取り戻す”に共感して。", "pledge_datetime": "2025-10-26", "user_name": "Mizuki Uchimaru", "ship_prefecture": "東京都", "lat": 35.711525, "lon": 139.74437}, {"comment": "素敵な画材ですね！頑張ってください！", "pledge_datetime": "2025-10-27", "user_name": "ri", "ship_prefecture": "東京都", "lat": 35.67305, "lon": 139.666962}, {"comment": "応援しています！", "pledge_datetime": "2025-10-27", "user_name": "小林龍之介", "ship_prefecture": "栃木県", "lat": 36.553844, "lon": 139.920212}, {"comment": "これからも応援します！", "pledge_datetime": "2025-10-27", "user_name": "Ai Okamura", "ship_prefecture": "千葉県", "lat": 35.875877, "lon": 140.020752}, {"comment": "素敵な取り組み頑張ってください！\n応援しています♪", "pledge_datetime": "2025-10-28", "user_name": "Sayoko", "ship_prefecture": "山形県", "lat": 38.890419, "lon": 140.339249}, {"comment": "ゆうさんの愛情と優しさと寝不足がつまったプロジェクト、応援しています！", "pledge_datetime": "2025-10-28", "user_name": "崔益文", "ship_prefecture": "東京都", "lat": 35.683788, "lon": 139.832108}, {"comment": "NHUMAに行って、Tシャツにスタンプをぺたぺた押した日のことを覚えています。ペタロはあの、描くことの楽しみと出会い直す体験を、もっと多くの人に届けてくれるのですね。ぜひ応援します！", "pledge_datetime": "2025-10-29", "user_name": "ごまどうふ", "ship_prefecture": "東京都", "lat": 35.725864, "lon": 139.779114}, {"comment": "ゆうさんの頑張り尊敬します。応援します！", "pledge_datetime": "2025-10-30", "user_name": "にっしゃん", "ship_prefecture": "東京都", "lat": 35.581478, "lon": 139.491653}, {"comment": "", "pledge_datetime": "2025-10-30", "user_name": "kyoko", "ship_prefecture": "愛知県", "lat": 35.095821, "lon": 137.161606}, {"comment": "引き続き応援をしています！", "pledge_datetime": "2025-10-31", "user_name": "Tadahiro Wakasugi", "ship_prefecture": "東京都", "lat": 35.718739, "lon": 139.683151}, {"comment": "大坪さんへ\n活動されているお姿に感動しました。微力ではございますが応援させていただきます！頑張ってください?", "pledge_datetime": "2025-10-31", "user_name": "ほんちゃん", "ship_prefecture": "大阪府", "lat": 34.873093, "lon": 135.620499}, {"comment": "先日は豊かな時間をありがとうございました！微力ながら、応援させていただきます！\n右脳活性化に、ペタロandリトリートお願いします（笑）", "pledge_datetime": "2025-10-31", "user_name": "よい", "ship_prefecture": "千葉県", "lat": 35.731171, "lon": 140.011917}, {"comment": "微力ながら応援させていただきました～?健康に気を付けて、ご活躍下さい?", "pledge_datetime": "2025-11-01", "user_name": "Minny", "ship_prefecture": "神奈川県", "lat": 35.355888, "lon": 139.44696}, {"comment": "応援しています！", "pledge_datetime": "2025-11-01", "user_name": "Ken", "ship_prefecture": "千葉県", "lat": 35.889034, "lon": 140.004166}, {"comment": "大切な人達が，思う存分自らを表現して素敵な作品となる事願ってます?", "pledge_datetime": "2025-11-01", "user_name": "キャサリン", "ship_prefecture": "愛媛県", "lat": 33.824238, "lon": 132.737564}, {"comment": "応援しています！", "pledge_datetime": "2025-11-01", "user_name": "alice", "ship_prefecture": "千葉県", "lat": 35.681702, "lon": 139.992004}, {"comment": "", "pledge_datetime": "2025-11-01", "user_name": "すみれ", "ship_prefecture": "東京都", "lat": 35.587227, "lon": 139.697021}, {"comment": "応援しています！", "pledge_datetime": "2025-11-01", "user_name": "クララ.Ueno", "ship_prefecture": "東京都", "lat": 35.650379, "lon": 139.639877}, {"comment": "応援しています！", "pledge_datetime": "2025-11-01", "user_name": "takec", "ship_prefecture": "神奈川県", "lat": 35.447735, "lon": 139.642532}, {"comment": "ゆうさん、応援しています！", "pledge_datetime": "2025-11-01", "user_name": "関口通江", "ship_prefecture": "東京都", "lat": 35.635681, "lon": 139.514954}, {"comment": "自由に表現できる場がひろがりますように。\n幸せの輪が広がります様に。\n応援しています。", "pledge_datetime": "2025-11-02", "user_name": "NonGon", "ship_prefecture": "東京都", "lat": 35.643711, "lon": 139.605972}, {"comment": "是非、体感させていただきます。\n孫も1人連れて行きたいと思っています。\n楽しみにしています。", "pledge_datetime": "2025-11-02", "user_name": "NonGon", "ship_prefecture": "東京都", "lat": 35.643711, "lon": 139.605972}, {"comment": "応援しています！頑張ってください！\n素敵なヌーマがより輝きますように！", "pledge_datetime": "2025-11-03", "user_name": "おおた", "ship_prefecture": "千葉県", "lat": 35.977394, "lon": 139.836441}, {"comment": "学びを活かして頑張ってください。応援しています！", "pledge_datetime": "2025-11-05", "user_name": "たけし", "ship_prefecture": "神奈川県", "lat": 35.403709, "lon": 139.536057}, {"comment": "夢の実現を応援しています！", "pledge_datetime": "2025-11-05", "user_name": "en3", "ship_prefecture": "千葉県", "lat": 35.866272, "lon": 140.021347}, {"comment": "応援しています！", "pledge_datetime": "2025-11-06", "user_name": "norikondo9", "ship_prefecture": "東京都", "lat": 35.631668, "lon": 139.722641}, {"comment": "頑張って下さい。\n応援しています?", "pledge_datetime": "2025-11-07", "user_name": "ミワコ", "ship_prefecture": "千葉県", "lat": 35.886028, "lon": 139.963501}, {"comment": "微力でもうしわけない！応援してます！", "pledge_datetime": "2025-11-09", "user_name": "ＳＫ", "ship_prefecture": "千葉県", "lat": 35.890324, "lon": 140.004349}, {"comment": "息子さんのエピソード、心打たれました！子供たちには思い切り自己表現してもらいたいです? 12/21娘2人参加希望します?", "pledge_datetime": "2025-11-09", "user_name": "小笠原夕帆", "ship_prefecture": "千葉県", "lat": 35.874962, "lon": 140.003967}, {"comment": "応援しています！", "pledge_datetime": "2025-11-10", "user_name": "冷凍みかん", "ship_prefecture": "千葉県", "lat": 35.878746, "lon": 140.019501}, {"comment": "大坪さん、いつもブランディングの相談で的確な道を示してくださり、本当にありがとうございます！\n大坪さんの魅力が、このプロジェクトでさらに多くの人に届くかと思うと、私までワクワクしてきます。\n目標達成に向けて、頑張ってくださいね！ 微力ながら、精一杯応援させていただきます！", "pledge_datetime": "2025-11-10", "user_name": "LIFETIMESUPPORT", "ship_prefecture": "埼玉県", "lat": 35.891029, "lon": 139.775894}, {"comment": "いつもブランディングの相談に乗っていただき、本当にありがとうございます。 大坪さんの的確なアドバイスに、いつも助けられています。\n\n大坪さんほどの素晴らしいクリエイターの魅力が、このクラウドファンディングを通じて、世の中に広く知れ渡ることを心から願っています。\n\nこの新たな挑戦が大きな成功に繋がりますように！ 全力で応援しています！", "pledge_datetime": "2025-11-10", "user_name": "LIFETIMESUPPORT", "ship_prefecture": "埼玉県", "lat": 35.891029, "lon": 139.775894}, {"comment": "応援しています！", "pledge_datetime": "2025-11-10", "user_name": "佐々木 美穂", "ship_prefecture": "東京都", "lat": 35.647205, "lon": 139.584457}, {"comment": "とても素敵な空間での初めてのビジョンリトリート。今でも思い出されます。時間を忘れるような体験ばかりで貴重な時間でした。これからのヌーマも応援しています！", "pledge_datetime": "2025-11-10", "user_name": "majii", "ship_prefecture": "東京都", "lat": 35.696884, "lon": 139.73082}, {"comment": "心ばかりですが、未来に起こることが楽しみです！応援します！", "pledge_datetime": "2025-11-11", "user_name": "eureka", "ship_prefecture": "東京都", "lat": 35.69537, "lon": 139.908417}, {"comment": "心ばかりですが、未来に起こることが楽しみです！応援します！", "pledge_datetime": "2025-11-11", "user_name": "eureka", "ship_prefecture": "東京都", "lat": 35.69537, "lon": 139.908417}, {"comment": "素敵な活動、応援しています！", "pledge_datetime": "2025-11-11", "user_name": "aico", "ship_prefecture": "東京都", "lat": 35.615284, "lon": 139.708618}, {"comment": "ゆうさん、いつもいつも本当にありがとうございます！ゆうさんと出会ったのが2022年の年末でした。そこから何度も、私に寄り添ってくださり、たくさんの対話や経験を通じて、導いてくださっていること、本当に感謝しています。今年、2025年を走り抜けた自分に、友人とNHUMAでクリスマスアートを創る体験をプレゼントしたいと思います＾＾あと13日、共に走り抜けましょう～～！！", "pledge_datetime": "2025-11-11", "user_name": "Hiromi K", "ship_prefecture": "千葉県", "lat": 35.876598, "lon": 140.01265}, {"comment": "大坪さんの活躍を知り嬉しくなりました！勇気をいただきました。少しでも多くの方が前を向いて生きていけるといいですね！ささやかではありますが、支援させていただきます。", "pledge_datetime": "2025-11-11", "user_name": "kinuga", "ship_prefecture": "埼玉県", "lat": 35.950645, "lon": 139.632843}, {"comment": "おそくなりました！想いがたくさんつまったプロジェクトですね。\nリトリートにお伺いするのを楽しみにしています！", "pledge_datetime": "2025-11-12", "user_name": "すずか", "ship_prefecture": "千葉県", "lat": 35.641529, "lon": 139.921494}, {"comment": "遅くなりましたが、応援しています！素晴らしい活動だと思います！", "pledge_datetime": "2025-11-13", "user_name": "片桐みどり", "ship_prefecture": "千葉県", "lat": 35.869091, "lon": 140.007935}, {"comment": "応援しています！", "pledge_datetime": "2025-11-13", "user_name": "細 剛士", "ship_prefecture": "神奈川県", "lat": 35.451927, "lon": 139.375122}, {"comment": "頑張りすぎないでがんばってー", "pledge_datetime": "2025-11-13", "user_name": "前原 正宏", "ship_prefecture": "神奈川県", "lat": 35.436459, "lon": 139.655075}, {"comment": "とても素敵な活動だと思います！応援しております！手賀沼はいいところだなぁと思い近くへ引っ越してきました。", "pledge_datetime": "2025-11-15", "user_name": "POWDER?", "ship_prefecture": "千葉県", "lat": 35.864502, "lon": 140.02124}, {"comment": "いつも刺激をいただいています。\n同じ景色を見ながら、感性が共鳴することがうれしいです。\nこれから形になっていくプロジェクトを楽しみにしています。\n微力ながら応援しています。", "pledge_datetime": "2025-11-15", "user_name": "cima", "ship_prefecture": "千葉県", "lat": 35.754608, "lon": 140.023361}, {"comment": "応援させて頂きます！", "pledge_datetime": "2025-11-15", "user_name": "木下 哲人", "ship_prefecture": "千葉県", "lat": 35.692764, "lon": 140.052078}, {"comment": "グロビ繋がりで辿り着きました。まだ体感出来ていませんがきっとイマジネーションが広がる何かがあるだろうと感じました。是非一度伺いたいなあと思っています。", "pledge_datetime": "2025-11-16", "user_name": "フーチ", "ship_prefecture": "東京都", "lat": 35.68399, "lon": 139.579758}, {"comment": "素晴らしい世界が広がると良いですね", "pledge_datetime": "2025-11-16", "user_name": "もと", "ship_prefecture": "東京都", "lat": 35.705086, "lon": 139.739594}, {"comment": "応援してます！\n最後の追い込みタイミングで少しばかりのご支援になりましたら幸いです！", "pledge_datetime": "2025-11-16", "user_name": "omi", "ship_prefecture": "埼玉県", "lat": 35.926949, "lon": 139.633469}, {"comment": "このプロジェクトをきっかけに、たくさんの素敵な作品と感性が育っていくことを願っています！心からの応援の気持ちを込めて^^", "pledge_datetime": "2025-11-16", "user_name": "Yoshi", "ship_prefecture": "神奈川県", "lat": 35.365425, "lon": 139.543625}, {"comment": "ゆうさん、すばらしい取り組み、応援します！", "pledge_datetime": "2025-11-16", "user_name": "片渕実以子", "ship_prefecture": "兵庫県", "lat": 34.821667, "lon": 135.381775}, {"comment": "ゆうさん、すばらしい取り組み、応援します！", "pledge_datetime": "2025-11-16", "user_name": "片渕実以子", "ship_prefecture": "兵庫県", "lat": 34.821667, "lon": 135.381775}, {"comment": "ファッショニスタ大坪！頑張れ～～！！", "pledge_datetime": "2025-11-17", "user_name": "ずんこ", "ship_prefecture": "東京都", "lat": 35.73019, "lon": 139.774918}, {"comment": "ゆうさんにはカスジャで大変お世話になりました。応援していますので是非頑張ってください!", "pledge_datetime": "2025-11-17", "user_name": "2022期オンライン　河野　太志", "ship_prefecture": "大阪府", "lat": 34.887177, "lon": 135.667007}, {"comment": "心ばかりですが、応援してます。", "pledge_datetime": "2025-11-17", "user_name": "Matsumoto Kaori", "ship_prefecture": "神奈川県", "lat": 35.444374, "lon": 139.581512}, {"comment": "すずかさんのFBを拝見致しました。\n頑張ってください。", "pledge_datetime": "2025-11-17", "user_name": "牧 増田", "ship_prefecture": "北海道", "lat": 43.009712, "lon": 144.391327}, {"comment": "応援します?\n頑張って下さい", "pledge_datetime": "2025-11-17", "user_name": "しゅう", "ship_prefecture": "埼玉県", "lat": 35.80027, "lon": 139.720642}, {"comment": "妻と一緒に応援しています。", "pledge_datetime": "2025-11-17", "user_name": "HY", "ship_prefecture": "千葉県", "lat": 35.875385, "lon": 139.994217}, {"comment": "いつもお世話になってます！！期待に応えられるようがんばりますーー！！", "pledge_datetime": "2025-11-17", "user_name": "渡邊雄樹", "ship_prefecture": "千葉県", "lat": 35.697559, "lon": 140.039337}, {"comment": "すごいことが、はじまった！なんて美しいツールだろう、、どんな方法でサポートできるかな？と眺めているうちに終了1週間前になっていました。間に合ってホッとしています。\n何者でもなかったわたしに色々な場や出会いを運んで来てくれたゆうさん。行き詰まる事が起こっても、いつでもペースを合わせて優しい言葉をかけてくれる方。どこまでも、人を信じて進んでいける人なんだなぁと、尊敬と感謝の気持ちでいっぱいです。\nペタロは、そんなゆうさんの\"そのまんま\"が形になったもの。きっと使う人にどこまでも寄り添って、見たことのない世界へ連れて行ってくれるのだと思います。\nペタロでアート、心から楽しみにしています♪", "pledge_datetime": "2025-11-17", "user_name": "まなみ", "ship_prefecture": "千葉県", "lat": 35.609303, "lon": 140.147827}, {"comment": "応援しています！", "pledge_datetime": "2025-11-17", "user_name": "中川知典", "ship_prefecture": "神奈川県", "lat": 35.575203, "lon": 139.655396}, {"comment": "素敵なチャレンジ、応援しています！", "pledge_datetime": "2025-11-18", "user_name": "ask", "ship_prefecture": "東京都", "lat": 35.632313, "lon": 139.583847}, {"comment": "目標に届きますように！", "pledge_datetime": "2025-11-18", "user_name": "Mune", "ship_prefecture": "千葉県", "lat": 35.643291, "lon": 139.901993}, {"comment": "優しい笑顔の奥に熱くて正義感の強さが魅力の大坪さん！\n立ちはだかる困難をしなやかにいなしながら、毎日過ごされていることと思います！応援してます。ご近所なので子供がもう少し大きくなったら遊びに行かせてください。体には気をつけて（心と体のリミッター壊れてそうなので、、。）", "pledge_datetime": "2025-11-18", "user_name": "南 俊輔", "ship_prefecture": "茨城県", "lat": 35.949684, "lon": 139.99321}, {"comment": "絵心がなく表現を躊躇していましたが、自分なりに表現することの楽しさを最近体感しました！素敵な取り組み、応援します", "pledge_datetime": "2025-11-18", "user_name": "Saak", "ship_prefecture": "東京都", "lat": 35.691551, "lon": 139.826599}, {"comment": "ゆうさんの想いに共感します！最後まで走り切ってください！応援しています！", "pledge_datetime": "2025-11-18", "user_name": "沙奈絵", "ship_prefecture": "千葉県", "lat": 35.781406, "lon": 140.043243}, {"comment": "ラストスパート頑張ってください！", "pledge_datetime": "2025-11-19", "user_name": "Morimichi Ishikawa", "ship_prefecture": "神奈川県", "lat": 35.332687, "lon": 139.417282}, {"comment": "あと少しっ！最後まで応援しています～！", "pledge_datetime": "2025-11-19", "user_name": "tadatoshi yamamoto", "ship_prefecture": "大阪府", "lat": 34.617615, "lon": 135.523834}, {"comment": "応援してまーす。", "pledge_datetime": "2025-11-19", "user_name": "Saya", "ship_prefecture": "東京都", "lat": 35.636944, "lon": 139.738358}, {"comment": "Hiromiさんを通じてこのプロジェクトを知りました。微力ながら、応援させていただきます！", "pledge_datetime": "2025-11-20", "user_name": "Natsuko Shiraki", "ship_prefecture": "神奈川県", "lat": 35.355186, "lon": 139.548325}, {"comment": "事務局のひろみさんを通じて、こちらの活動を知りました！とても微力なのですが、応援させていただきます。今日、木の加工をされている「空と海」さんを訪問しました。ペタロのプロジェクトページで空と海さんのことを知り、あまりに素敵だったので行ってみたら、想像以上で感激しました。このような素敵な施設を知ることができたのもプロジェクトのおかげです。ありがとうございます。ペタロとともに、あたたかくて心を動かす活動が世の中に広まっていきますように。", "pledge_datetime": "2025-11-20", "user_name": "黒澤沙智子", "ship_prefecture": "東京都", "lat": 35.775372, "lon": 139.644775}, {"comment": "ゆみこちゃん　素敵な活動を応援しております！！", "pledge_datetime": "2025-11-20", "user_name": "デイジー", "ship_prefecture": "茨城県", "lat": 35.989937, "lon": 140.041656}, {"comment": "タラカフェチームです！いつも一緒に活動させてもらい、ありがとうございます！来年も楽しい時間を作っていきましょう！ペダロが広がってつながっていきますように！", "pledge_datetime": "2025-11-20", "user_name": "sho", "ship_prefecture": "千葉県", "lat": 35.873787, "lon": 140.023499}, {"comment": "応援してます！", "pledge_datetime": "2025-11-20", "user_name": "春山るみ", "ship_prefecture": "東京都", "lat": 35.636227, "lon": 139.786835}, {"comment": "あと少し！絶対達成して欲しいです！！！", "pledge_datetime": "2025-11-21", "user_name": "峯岸 明美", "ship_prefecture": "千葉県", "lat": 35.877018, "lon": 140.043289}, {"comment": "素敵なプロジェクト、実現するといいですね！", "pledge_datetime": "2025-11-21", "user_name": "mini", "ship_prefecture": "千葉県", "lat": 35.894344, "lon": 139.944412}, {"comment": "いつもあたたかくて、パワフルで、とってもステキなゆうさん?応援しています!!", "pledge_datetime": "2025-11-21", "user_name": "そのだ", "ship_prefecture": "滋賀県", "lat": 35.122253, "lon": 135.920074}, {"comment": "応援しています！", "pledge_datetime": "2025-11-21", "user_name": "うめぞー", "ship_prefecture": "栃木県", "lat": 36.559219, "lon": 139.83493}, {"comment": "素敵です！頑張ってください^^", "pledge_datetime": "2025-11-21", "user_name": "ひっつん", "ship_prefecture": "東京都", "lat": 35.774178, "lon": 139.726578}, {"comment": "ギリギリになったしまいました?ゆみこさんの優しさが多くの方に届き、喜んでもらえるといいですね。応援しています??", "pledge_datetime": "2025-11-21", "user_name": "satsuki", "ship_prefecture": "千葉県", "lat": 35.870388, "lon": 140.018799}, {"comment": "遅くなりました！ゆみこさんのゆるくて人を包み込む暖かさが心地よくて、みんなのびのびと自分を表現できるのが伝わってきます。\nいつも応援しております。また我孫子に遊びに行きますね！", "pledge_datetime": "2025-11-21", "user_name": "ゆう", "ship_prefecture": "神奈川県", "lat": 35.331818, "lon": 139.460632}, {"comment": "微力ながら元気玉を我孫子の宝に進呈させて頂きます", "pledge_datetime": "2025-11-21", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "ペタロの魅力を自分なりに考えてみまして\n・まずかわいい、見てて癒される\n・すべすべで触っていて癒される\n・ポンと置いとくだけでも味のあるオブジェ\n・人見知りでも話のネタを提供してくれるストーリー性\n・煮詰まった時、紙へポンポン押して脳内デトックスできる\n・行き場の無い梨の木の価値を再認識できる貢献感\n・丁寧な手作業にうっとりできる幸福感\n・創造力、行動力、センスモンスターで最後まで諦めない大坪魂に少しあやかれる気になれる\n\nまだ色々ありそう…\n残り2日間、頑張りましょう??", "pledge_datetime": "2025-11-21", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "応援しています！", "pledge_datetime": "2025-11-22", "user_name": "yomo", "ship_prefecture": "神奈川県", "lat": 35.446808, "lon": 139.524094}, {"comment": "応援してます。頑張って下さい。\nまたよろしくお願いします。", "pledge_datetime": "2025-11-22", "user_name": "はっしー", "ship_prefecture": "東京都", "lat": 35.620327, "lon": 139.615723}, {"comment": "陰ながら応援しています！", "pledge_datetime": "2025-11-22", "user_name": "あき", "ship_prefecture": "神奈川県", "lat": 35.481277, "lon": 139.601791}, {"comment": "微力ながら応援させて頂きます！いつも頑張っている姿をパワーをもらってます。クリシンパワーで今後も頑張って下さい?", "pledge_datetime": "2025-11-22", "user_name": "くに", "ship_prefecture": "愛知県", "lat": 35.176723, "lon": 137.008804}, {"comment": "とても素敵な場所を作ってくれて、いつもあたたかく迎え入れてくれたゆうさんへの恩返し?\nペタロを通して、沢山の方を幸せにできるよう応援しています?\nいつも、ありがとうございます?", "pledge_datetime": "2025-11-22", "user_name": "aib", "ship_prefecture": "千葉県", "lat": 35.814545, "lon": 139.956268}, {"comment": "応援しています！！", "pledge_datetime": "2025-11-22", "user_name": "長野理恵", "ship_prefecture": "東京都", "lat": 35.726166, "lon": 139.787567}, {"comment": "応援してます！ワークショップたのしみ！", "pledge_datetime": "2025-11-22", "user_name": "よっしー", "ship_prefecture": "神奈川県", "lat": 35.608051, "lon": 139.551239}, {"comment": "チャレンジ応援しています！がんばってください！", "pledge_datetime": "2025-11-22", "user_name": "中村円香", "ship_prefecture": "東京都", "lat": 35.648815, "lon": 139.604279}, {"comment": "頑張って?", "pledge_datetime": "2025-11-22", "user_name": "里枝子", "ship_prefecture": "千葉県", "lat": 35.889065, "lon": 139.995438}, {"comment": "応援しています。いつも前向きでポジティブなオーラから刺激をもらっています。またいつか我孫子に遊びに行かせてください＾＾", "pledge_datetime": "2025-11-22", "user_name": "Waka N", "ship_prefecture": "神奈川県", "lat": 35.405972, "lon": 139.534775}, {"comment": "大坪さん、ご活躍いつも楽しく拝見しております。周りが自然と巻き込まれていく大坪さんのお人柄は本当に素敵だと思います。応援しておりますので、頑張ってください。", "pledge_datetime": "2025-11-22", "user_name": "hiromu takai", "ship_prefecture": "愛知県", "lat": 35.144714, "lon": 137.033585}, {"comment": "感謝です！毎日、頑張ってる姿に感動いただいてます！！私も頑張りますね！！！", "pledge_datetime": "2025-11-22", "user_name": "松岡 俊樹", "ship_prefecture": "東京都", "lat": 35.637238, "lon": 139.73381}, {"comment": "ゆうさんの挑戦応援しています！頑張って！", "pledge_datetime": "2025-11-22", "user_name": "うめちゃん", "ship_prefecture": "千葉県", "lat": 35.696087, "lon": 139.989578}, {"comment": "応援しています！", "pledge_datetime": "2025-11-22", "user_name": "Miho", "ship_prefecture": "静岡県", "lat": 35.089085, "lon": 138.953491}, {"comment": "応援しています！", "pledge_datetime": "2025-11-23", "user_name": "あっすー", "ship_prefecture": "東京都", "lat": 35.689526, "lon": 139.783325}, {"comment": "我孫子で誰よりも輝け?", "pledge_datetime": "2025-11-23", "user_name": "燕屋", "ship_prefecture": "千葉県", "lat": 35.864807, "lon": 140.021362}, {"comment": "ギリギリの方が、インパクトに残ると思って、引っ張りました。大坪氏のビジョンに感銘し、託します。私も来年1月から、新たな挑戦を始めます。頑張りましょう。", "pledge_datetime": "2025-11-23", "user_name": "内藤さん", "ship_prefecture": "兵庫県", "lat": 34.71653, "lon": 135.029099}, {"comment": "大坪さん！大変お久しぶりです！\nグロービスの入学式の時に「こんなに心の優しい人がいるんだぁ。。」って思ったのをずっと覚えてます?\n本当にお気持ちばかりですが、、?\nこれからも応援してます??", "pledge_datetime": "2025-11-23", "user_name": "ちゃん", "ship_prefecture": "千葉県", "lat": 35.734566, "lon": 139.910248}, {"comment": "とっても素敵なプロジェクト?世界中誰でも楽しめますね。応援しています?", "pledge_datetime": "2025-11-23", "user_name": "ムック", "ship_prefecture": "千葉県", "lat": 35.886932, "lon": 139.987946}, {"comment": "多くの人が表現をしたくなる、なんて素敵なプロジェクト。応援しています！", "pledge_datetime": "2025-11-23", "user_name": "nara", "ship_prefecture": "東京都", "lat": 35.668968, "lon": 139.598633}, {"comment": "素敵な取り組み、応援してます！！！", "pledge_datetime": "2025-11-23", "user_name": "みっちゃん", "ship_prefecture": "兵庫県", "lat": 34.69112, "lon": 135.018402}, {"comment": "素敵な活動応援しています！頑張ってください?", "pledge_datetime": "2025-11-23", "user_name": "あいぼん", "ship_prefecture": "大阪府", "lat": 34.411793, "lon": 135.382568}, {"comment": "息子さんの投稿に感動してしました。ゆうさんの考えてる世界をみてみたいと思いました！", "pledge_datetime": "2025-11-23", "user_name": "mayuco", "ship_prefecture": "奈良県", "lat": 34.515297, "lon": 135.698517}, {"comment": "梨の木の手触りが忘れられません。\n素敵な活動をたくさん行っていかれる事を願っています??", "pledge_datetime": "2025-11-23", "user_name": "よい", "ship_prefecture": "千葉県", "lat": 35.731171, "lon": 140.011917}, {"comment": "素晴らしい取り組み、応援しています！", "pledge_datetime": "2025-11-23", "user_name": "Ichiro Hayashi", "ship_prefecture": "埼玉県", "lat": 35.858624, "lon": 139.542694}, {"comment": "良かった、間に合ってーーーー！", "pledge_datetime": "2025-11-23", "user_name": "よーへ", "ship_prefecture": "千葉県", "lat": 35.825691, "lon": 139.923447}, {"comment": "ゆうさん、いつもありがとうございます。\nみんなゆうさんの人柄、世界観、行動力にたくさんの刺激をいただいてます。\n達成には、たくさんの壁があったかと思いますが、乗り越えたゆうさんは私たちの誇りです。本当におめでとうございます。", "pledge_datetime": "2025-11-23", "user_name": "S N", "ship_prefecture": "静岡県", "lat": 34.706627, "lon": 137.726273}, {"comment": "ゆうさん頑張ってください！！", "pledge_datetime": "2025-11-23", "user_name": "aya", "ship_prefecture": "神奈川県", "lat": 35.601898, "lon": 139.623001}, {"comment": "「うまくできないかもしれない」というおそれを遊びに変えて", "pledge_datetime": "2025-11-23", "user_name": "shoko hirata", "ship_prefecture": "愛知県", "lat": 34.96294, "lon": 136.961182}, {"comment": "ゆうさんの活動、応援しています！リトリートも行きたいです！", "pledge_datetime": "2025-11-23", "user_name": "Yoshiko I", "ship_prefecture": "神奈川県", "lat": 35.405331, "lon": 139.601471}, {"comment": "いつもニコニコしながら、新しいアイデアにワクワクしている大坪さんから、元気と刺激をもらっています～。これからもよろしくお願いします！", "pledge_datetime": "2025-11-23", "user_name": "コマツナ", "ship_prefecture": "東京都", "lat": 35.714821, "lon": 139.766373}, {"comment": "これから多くの方にゆうさんの想いと取り組みが広がっていくのを楽しみにしています！", "pledge_datetime": "2025-11-23", "user_name": "Kenji", "ship_prefecture": "北海道", "lat": 43.245117, "lon": 141.569412}, {"comment": "目標達成おめでとうございます。応援しています", "pledge_datetime": "2025-11-23", "user_name": "アメ", "ship_prefecture": "神奈川県", "lat": 35.546452, "lon": 139.644165}, {"comment": "努力とパワーの塊のゆみこちゃん!!皆を笑顔に!!の気持ちに賛同します。ファイティン?", "pledge_datetime": "2025-11-23", "user_name": "miho", "ship_prefecture": "東京都", "lat": 35.784534, "lon": 139.836487}, {"comment": "達成おめでとうございます！素晴らしいお取り組み、これからも頑張ってください(^^)", "pledge_datetime": "2025-11-23", "user_name": "りはく", "ship_prefecture": "福岡県", "lat": 33.586071, "lon": 130.363266}, {"comment": "100％達成おめでとうございます！滑り込みですがご支援させていただきました(*^^*)", "pledge_datetime": "2025-11-23", "user_name": "anna", "ship_prefecture": "千葉県", "lat": 35.866619, "lon": 140.108353}, {"comment": "NHUMAを初めて訪れた時、我孫子にこんな素敵な人たちが集まる場所が！と一瞬で虜になりました。「想い」をそのままで終わらせず、それを現実世界に落とし込んで実現するスキルと情熱で、確実に社会に変革を起こしているゆうさん。ゆうさんの描く未来を見てみたいな、そして自分もいつか何かの形で関わりたいな、と新たな挑戦にワクワクしています(^^)\nギリギリになってしまったんですが、応援しています！", "pledge_datetime": "2025-11-24", "user_name": "Rika", "ship_prefecture": "千葉県", "lat": 35.873592, "lon": 140.002823}, {"comment": "ゆみねえ、微力ながら応援しています！\nいつも私に新しい目線や情熱を見せてくれるゆみねえ。今回のPETALOのプロジェクトにも、ゆみねえらしい“想い”と“強さ”がしっかり宿っていて、読んでいて胸が熱くなりました。社会や環境へのまなざし、そしてものづくりへの愛情が本当にゆみねえらしく、これからの広がりも心から楽しみにしています?", "pledge_datetime": "2025-11-24", "user_name": "Miki (Nagai) T", "ship_prefecture": "東京都", "lat": 35.591915, "lon": 139.697296}, {"comment": "応援しています！", "pledge_datetime": "2025-11-24", "user_name": "Nomura", "ship_prefecture": "東京都", "lat": 35.689503, "lon": 139.691727}, {"comment": "+", "pledge_datetime": "2025-11-24", "user_name": "おの", "ship_prefecture": "千葉県", "lat": 35.648537, "lon": 140.133865}, {"comment": "次のステージへのスタートラインですね！\nお互い頑張っていきましょう?", "pledge_datetime": "2025-11-24", "user_name": "宮林 誠之", "ship_prefecture": "埼玉県", "lat": 35.811954, "lon": 139.741013}, {"comment": "応援しています！", "pledge_datetime": "2025-11-24", "user_name": "67m", "ship_prefecture": "千葉県", "lat": 35.868557, "lon": 140.018463}, {"comment": "ハンコ、好き??\n応援します^ ^", "pledge_datetime": "2025-11-24", "user_name": "低音カイロ", "ship_prefecture": "千葉県", "lat": 35.718842, "lon": 140.02037}, {"comment": "グロビ卒業生です。ステキな想いを持った活動を応援しています！", "pledge_datetime": "2025-11-24", "user_name": "田川 直史", "ship_prefecture": "東京都", "lat": 35.770325, "lon": 139.86525}, {"comment": "素敵な活動、応援してます?", "pledge_datetime": "2025-11-24", "user_name": "菅もも", "ship_prefecture": "愛知県", "lat": 35.138275, "lon": 136.948105}, {"comment": "ほんの気持ちだけだけど、、、すこしだけ恩返し。応援してます！", "pledge_datetime": "2025-11-24", "user_name": "Red", "ship_prefecture": "埼玉県", "lat": 35.852573, "lon": 139.852814}, {"comment": "遅くなりました！セカンドゴール達成に向けてのパワーをおくります！大坪さん、ラストスパートもファイトです??", "pledge_datetime": "2025-11-24", "user_name": "由帆", "ship_prefecture": "千葉県", "lat": 35.832123, "lon": 139.915436}, {"comment": "最後の一押し！！巻き込まれて幸せでした?4月に私何してるのか、まだ想像つかないので笑　ゆうさんの元で、しっかり自分と対話する時間をプレゼントしたいと思います！ドラマチックな45日をありがとうございました！！", "pledge_datetime": "2025-11-24", "user_name": "Hiromi K", "ship_prefecture": "千葉県", "lat": 35.876598, "lon": 140.01265}, {"comment": "応援しています！", "pledge_datetime": "2025-11-24", "user_name": "sa.ya", "ship_prefecture": "茨城県", "lat": 36.153358, "lon": 139.885635}, {"comment": "いつもインスタ拝見してます！応援させてください！", "pledge_datetime": "2025-11-24", "user_name": "mina", "ship_prefecture": "東京都", "lat": 35.726353, "lon": 139.823013}, {"comment": "応援しています！遅くなり申し訳ないです??♀?\n本当にお疲れ様でした！ゆっくり休んでくださいね", "pledge_datetime": "2025-11-24", "user_name": "近藤奈央", "ship_prefecture": "兵庫県", "lat": 34.553337, "lon": 135.002106}, {"comment": "大坪さん、応援してますよ！そうお遠くない未来でコラボしましょう！深見", "pledge_datetime": "2025-11-24", "user_name": "shiro fukami", "ship_prefecture": "愛知県", "lat": 35.18021, "lon": 136.906586}, {"comment": "安西先生の「諦めたらそこで試合終了ですよ」は大坪さんの生き様からインスパイアされたと小耳に挟みました。\n\n最後まで諦めない！素晴らしすぎ", "pledge_datetime": "2025-11-24", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "安西先生の「諦めたらそこで試合終了ですよ」は大坪さんの生き様からインスパイアされたと小耳に挟みました。\n\n最後まで諦めない！素晴らしすぎ", "pledge_datetime": "2025-11-24", "user_name": "中村俊明", "ship_prefecture": "千葉県", "lat": 35.864193, "lon": 140.028183}, {"comment": "hamiiiiiiiiiiiiii！！！！！！モモーーーーーーーーー！！", "pledge_datetime": "2025-11-24", "user_name": "くーさん", "ship_prefecture": "千葉県", "lat": 35.88868, "lon": 139.976135}, {"comment": "応援しています！", "pledge_datetime": "2025-11-24", "user_name": "大友聡", "ship_prefecture": "千葉県", "lat": 35.873096, "lon": 140.006561}, {"comment": "応援してます！", "pledge_datetime": "2025-11-24", "user_name": "KANA", "ship_prefecture": "東京都", "lat": 35.709534, "lon": 139.56427}];
+
+    const map = new maplibregl.Map({
+      container: "map",
+      style: "https://demotiles.maplibre.org/style.json",
+      center: [138.0, 37.5],
+      zoom: 4.4,
+      attributionControl: false,
+    });
+
+    function shuffle(array) {
+      const a = [...array];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      if (Number.isNaN(date.getTime())) return dateStr;
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    function adjustQuotePosition(stamp) {
+      const quote = stamp.el.querySelector(".quote");
+      if (!quote) return;
+      quote.style.setProperty("--quote-shift", "0px");
+      quote.style.setProperty("--quote-lift", "0px");
+      const rect = quote.getBoundingClientRect();
+      const margin = 12;
+      let shiftX = 0;
+      let shiftY = 0;
+      if (rect.left < margin) {
+        shiftX = margin - rect.left;
+      } else if (rect.right > window.innerWidth - margin) {
+        shiftX = -(rect.right - (window.innerWidth - margin));
+      }
+      if (rect.top < margin) {
+        shiftY = margin - rect.top;
+      } else if (rect.bottom > window.innerHeight - margin) {
+        shiftY = -(rect.bottom - (window.innerHeight - margin));
+      }
+      quote.style.setProperty("--quote-shift", `${shiftX}px`);
+      quote.style.setProperty("--quote-lift", `${shiftY}px`);
+    }
+
+    function startQuoteTracking(stamp) {
+      if (stamp.quoteAdjustRAF) return;
+      const tick = () => {
+        adjustQuotePosition(stamp);
+        if (stamp.isHovered) {
+          stamp.quoteAdjustRAF = requestAnimationFrame(tick);
+        } else {
+          stamp.quoteAdjustRAF = null;
+        }
+      };
+      stamp.quoteAdjustRAF = requestAnimationFrame(tick);
+    }
+
+    function stopQuoteTracking(stamp) {
+      if (stamp.quoteAdjustRAF) {
+        cancelAnimationFrame(stamp.quoteAdjustRAF);
+        stamp.quoteAdjustRAF = null;
+      }
+    }
+
+    const patternMakers = [
+      () => `
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <circle cx="18" cy="18" r="11" />
+          <circle cx="18" cy="18" r="5" />
+        </svg>
+      `,
+      () => `
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <rect x="6" y="6" width="24" height="24" rx="3" />
+          <line x1="6" y1="12" x2="30" y2="12" />
+          <line x1="12" y1="6" x2="12" y2="30" />
+        </svg>
+      `,
+      () => `
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <path d="M4 12c5 5 7-5 12 0s7-5 12 0 7-5 12 0" />
+          <path d="M4 22c5 5 7-5 12 0s7-5 12 0 7-5 12 0" />
+        </svg>
+      `,
+      () => `
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <polygon points="18,4 31,30 5,30" />
+          <line x1="18" y1="4" x2="18" y2="30" />
+        </svg>
+      `,
+      () => `
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <polygon points="12,3 24,3 33,12 33,24 24,33 12,33 3,24 3,12" />
+          <circle cx="18" cy="18" r="3" />
+        </svg>
+      `,
+      () => `
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <line x1="8" y1="8" x2="28" y2="28" />
+          <line x1="8" y1="28" x2="28" y2="8" />
+          <circle cx="18" cy="18" r="10" />
+        </svg>
+      `,
+      () => `
+        <svg viewBox="0 0 36 36" aria-hidden="true">
+          <path d="M18 4l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" />
+        </svg>
+      `,
+    ];
+
+    function createStampMarker(entry) {
+      const shell = document.createElement("div");
+      shell.className = "maplibregl-marker stamp-shell";
+      const el = document.createElement("div");
+      el.className = "stamp";
+      const pattern =
+        patternMakers[Math.floor(Math.random() * patternMakers.length)]();
+      const rotation = Math.random() * 20 - 10;
+      el.style.setProperty("--twist", `${rotation}deg`);
+      el.innerHTML = `
+        ${pattern}
+        <div class="quote">
+          <div>${(entry.comment || "").replace(/\\n/g, "<br>")}</div>
+          <span class="signature">
+            ${formatDate(entry.pledge_datetime)} — ${(entry.user_name || "Anonymous")} ${entry.ship_prefecture ? "· " + entry.ship_prefecture : ""}
+          </span>
+        </div>
+      `;
+      shell.appendChild(el);
+      return { shell, el };
+    }
+
+    function getLifespan() {
+      return 5000 + Math.random() * 7000;
+    }
+
+    map.on("load", async () => {
+      const entries = EMBEDDED_DATA
+        .map((row) => ({
+          ...row,
+          lat: parseFloat(row.lat),
+          lon: parseFloat(row.lon),
+        }))
+        .filter((row) => Number.isFinite(row.lat) && Number.isFinite(row.lon));
+
+      if (!entries.length) return;
+
+      const queue = shuffle(entries);
+      let pointer = 0;
+      const active = new Set();
+      const MAX_ACTIVE = 80;
+      let paused = false;
+      let hoverDepth = 0;
+      let dropTimer = null;
+      const VIEW_PADDING = { top: 120, bottom: 140, left: 120, right: 120 };
+      let autoHighlightTimer = null;
+      const canvasLayer = document.getElementById("canvas-layer");
+      const modeToggle = document.getElementById("mode-toggle");
+      let mode = "map";
+      const TRANSITION_MS = 750;
+
+      function updateViewport() {
+        if (mode !== "map" || !active.size) return;
+        const bounds = new maplibregl.LngLatBounds();
+        active.forEach((stamp) => {
+          if (stamp.marker) bounds.extend(stamp.marker.getLngLat());
+        });
+        if (!bounds.isEmpty()) {
+          map.fitBounds(bounds, {
+            padding: VIEW_PADDING,
+            duration: 1400,
+            maxZoom: 6.7,
+            linear: false,
+          });
+        }
+      }
+
+      function randomCanvasPosition() {
+        const pad = 50;
+        const rect = canvasLayer.getBoundingClientRect();
+        const x = pad + Math.random() * Math.max(20, rect.width - pad * 2);
+        const y = pad + Math.random() * Math.max(20, rect.height - pad * 2);
+        return { x, y };
+      }
+
+      function projectToScreen(entry) {
+        const p = map.project([entry.lon, entry.lat]);
+        return { x: p.x, y: p.y };
+      }
+
+      function animateToCanvas(stamp, reroll = false) {
+        const start = stamp.mode === "map" && stamp.marker
+          ? projectToScreen(stamp.entry)
+          : stamp.canvasPos || randomCanvasPosition();
+        if (stamp.marker) {
+          stamp.marker.remove();
+          stamp.marker = null;
+        }
+        if (reroll || !stamp.canvasPos) {
+          stamp.canvasPos = randomCanvasPosition();
+        }
+        if (stamp.shell.parentNode !== canvasLayer) {
+          canvasLayer.appendChild(stamp.shell);
+        }
+        stamp.shell.style.transition = "none";
+        stamp.shell.style.left = `${start.x}px`;
+        stamp.shell.style.top = `${start.y}px`;
+        stamp.shell.style.transform = "translate(-50%, -50%)";
+        stamp.shell.getBoundingClientRect(); // force reflow
+        stamp.shell.style.transition = `left ${TRANSITION_MS}ms ease, top ${TRANSITION_MS}ms ease`;
+        stamp.shell.style.left = `${stamp.canvasPos.x}px`;
+        stamp.shell.style.top = `${stamp.canvasPos.y}px`;
+        stamp.mode = "canvas";
+      }
+
+      function placeOnCanvasInstant(stamp, pos = null) {
+        if (stamp.marker) {
+          stamp.marker.remove();
+          stamp.marker = null;
+        }
+        stamp.canvasPos = pos || randomCanvasPosition();
+        if (stamp.shell.parentNode !== canvasLayer) {
+          canvasLayer.appendChild(stamp.shell);
+        }
+        stamp.shell.style.transition = "none";
+        stamp.shell.style.left = `${stamp.canvasPos.x}px`;
+        stamp.shell.style.top = `${stamp.canvasPos.y}px`;
+        stamp.shell.style.transform = "translate(-50%, -50%)";
+        stamp.mode = "canvas";
+        requestAnimationFrame(() => {
+          stamp.shell.style.transition = "";
+        });
+      }
+
+      function animateToMap(stamp) {
+        const target = projectToScreen(stamp.entry);
+        const start = stamp.mode === "canvas" && stamp.canvasPos ? stamp.canvasPos : target;
+        if (stamp.marker) {
+          stamp.marker.remove();
+          stamp.marker = null;
+        }
+        if (stamp.shell.parentNode !== canvasLayer) {
+          canvasLayer.appendChild(stamp.shell);
+        }
+        stamp.shell.style.transition = "none";
+        stamp.shell.style.left = `${start.x}px`;
+        stamp.shell.style.top = `${start.y}px`;
+        stamp.shell.style.transform = "translate(-50%, -50%)";
+        stamp.shell.getBoundingClientRect(); // force reflow
+        stamp.shell.style.transition = `left ${TRANSITION_MS}ms ease, top ${TRANSITION_MS}ms ease`;
+        stamp.shell.style.left = `${target.x}px`;
+        stamp.shell.style.top = `${target.y}px`;
+
+        const finish = () => {
+          stamp.shell.removeEventListener("transitionend", finish);
+          if (stamp.shell.parentNode === canvasLayer) {
+            canvasLayer.removeChild(stamp.shell);
+          }
+          stamp.shell.style.transition = "";
+          stamp.shell.style.left = "";
+          stamp.shell.style.top = "";
+          stamp.shell.style.transform = "";
+          stamp.marker = new maplibregl.Marker({ element: stamp.shell, anchor: "center" })
+            .setLngLat([stamp.entry.lon, stamp.entry.lat])
+            .addTo(map);
+          stamp.mode = "map";
+        };
+        stamp.shell.addEventListener("transitionend", finish, { once: true });
+        setTimeout(finish, TRANSITION_MS + 150);
+      }
+
+      function setMode(nextMode) {
+        if (mode === nextMode) return;
+        mode = nextMode;
+        document.body.classList.toggle("canvas-mode", mode === "canvas");
+        modeToggle.textContent = mode === "canvas" ? "Map mode" : "Canvas mode";
+        if (mode === "canvas") {
+          pauseDropping();
+        } else {
+          resumeDropping();
+        }
+        active.forEach((stamp) => {
+          if (mode === "canvas") {
+            animateToCanvas(stamp, true);
+          } else {
+            animateToMap(stamp);
+          }
+        });
+        updateViewport();
+      }
+
+      modeToggle.addEventListener("click", () => {
+        setMode(mode === "map" ? "canvas" : "map");
+      });
+
+      function createStamp(entry) {
+        const { shell, el } = createStampMarker(entry);
+        return {
+          entry,
+          shell,
+          el,
+          marker: null,
+          mode,
+          canvasPos: null,
+          removalTimer: null,
+          removalHandler: null,
+          removalFallbackTimer: null,
+          isHovered: false,
+        };
+      }
+
+      function cleanupStamp(stamp) {
+        if (stamp.marker) {
+          stamp.marker.remove();
+          stamp.marker = null;
+        } else if (stamp.shell.parentNode === canvasLayer) {
+          canvasLayer.removeChild(stamp.shell);
+        }
+        active.delete(stamp);
+        updateViewport();
+      }
+
+      function cancelRemoval(stamp) {
+        if (stamp.removalTimer) {
+          clearTimeout(stamp.removalTimer);
+          stamp.removalTimer = null;
+        }
+        if (stamp.removalFallbackTimer) {
+          clearTimeout(stamp.removalFallbackTimer);
+          stamp.removalFallbackTimer = null;
+        }
+        if (stamp.removalHandler) {
+          stamp.el.removeEventListener("transitionend", stamp.removalHandler);
+          stamp.removalHandler = null;
+        }
+        stamp.el.classList.remove("fading-out");
+        stamp.el.classList.add("visible");
+      }
+
+      function scheduleRemoval(stamp) {
+        cancelRemoval(stamp);
+        if (active.size <= 20) return;
+        stamp.removalTimer = setTimeout(() => {
+          if (stamp.isHovered || hoverDepth > 0) {
+            scheduleRemoval(stamp);
+            return;
+          }
+          stamp.el.classList.add("fading-out");
+          const cleanup = () => {
+            if (stamp.isHovered || hoverDepth > 0) return;
+            cleanupStamp(stamp);
+          };
+          stamp.removalHandler = () => {
+            cleanup();
+            stamp.removalHandler = null;
+          };
+          stamp.el.addEventListener("transitionend", stamp.removalHandler, { once: true });
+          stamp.removalFallbackTimer = setTimeout(() => {
+            if (stamp.removalHandler) {
+              cleanup();
+            }
+          }, 1500);
+        }, getLifespan());
+      }
+
+      function dropNextStamp(opts = {}) {
+        const { canvasPos = null, force = false } = opts;
+        if (paused && !force) return;
+        const entry = queue[pointer % queue.length];
+        pointer++;
+
+        const stamp = createStamp(entry);
+        active.add(stamp);
+
+        if (mode === "canvas") {
+          placeOnCanvasInstant(stamp, canvasPos);
+        } else {
+          animateToMap(stamp);
+        }
+
+        if (active.size > MAX_ACTIVE) {
+          const first = active.values().next().value;
+          cleanupStamp(first);
+        }
+        updateViewport();
+
+        const doHover = () => {
+          stamp.isHovered = true;
+          cancelRemoval(stamp);
+          stamp.el.classList.add("hovered");
+          hoverDepth += 1;
+          pauseDropping();
+          startQuoteTracking(stamp);
+        };
+
+        const doUnhover = (force = false) => {
+          if (!force && stamp.el.classList.contains("pinned-quote")) return;
+          stamp.isHovered = false;
+          stamp.el.classList.remove("hovered");
+          stopQuoteTracking(stamp);
+          stamp.el.style.setProperty("--quote-shift", "0px");
+          stamp.el.style.setProperty("--quote-lift", "0px");
+          scheduleRemoval(stamp);
+          hoverDepth = Math.max(0, hoverDepth - 1);
+          if (hoverDepth === 0) {
+            resumeDropping();
+          }
+        };
+
+        stamp.el._hover = doHover;
+        stamp.el._unhover = doUnhover;
+
+        stamp.el.addEventListener("mouseenter", doHover);
+        stamp.el.addEventListener("mouseleave", doUnhover);
+
+        requestAnimationFrame(() => stamp.el.classList.add("visible"));
+        scheduleRemoval(stamp);
+        return stamp;
+      }
+
+      function scheduleNextDrop() {
+        if (paused || mode === "canvas") return;
+        dropTimer = setTimeout(() => {
+          dropNextStamp();
+          scheduleNextDrop();
+        }, 250 + Math.random() * 650);
+      }
+
+      function pauseDropping() {
+        paused = true;
+        if (dropTimer) {
+          clearTimeout(dropTimer);
+          dropTimer = null;
+        }
+      }
+
+      function resumeDropping() {
+        if (!paused) return;
+        if (hoverDepth > 0) return;
+        paused = false;
+        scheduleNextDrop();
+      }
+
+      function autoHighlightRandom() {
+        if (paused || mode === "canvas" || !active.size) return;
+        const pool = Array.from(active).filter((s) => s.el && s.el._hover);
+        if (!pool.length) return;
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        const el = pick.el;
+        if (!el || el.classList.contains("hovered")) return;
+        el._hover && el._hover();
+        setTimeout(() => {
+          if (el && el._unhover) {
+            el._unhover();
+          }
+        }, 2000 + Math.random() * 1200);
+      }
+
+      autoHighlightTimer = setInterval(autoHighlightRandom, 2600);
+
+      canvasLayer.addEventListener("click", (e) => {
+        if (mode !== "canvas") return;
+        const rect = canvasLayer.getBoundingClientRect();
+        const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        const stamp = dropNextStamp({ canvasPos: pos, force: true });
+        if (stamp && stamp.el && stamp.el._hover) {
+          stamp.el._hover();
+          stamp.el.classList.add("pinned-quote");
+        }
+        // Close previous pinned quotes except the newest
+        const stampsArr = Array.from(active);
+        const latest = stampsArr[stampsArr.length - 1];
+        stampsArr.forEach((s) => {
+          if (s !== latest && s.el) {
+            s.el.classList.remove("pinned-quote");
+            s.el._unhover && s.el._unhover();
+          }
+        });
+      });
+
+      scheduleNextDrop();
+    });
+  </script>
+</body>
+</html>
