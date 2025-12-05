@@ -493,6 +493,13 @@
           pauseDropping();
         } else {
           resumeDropping();
+          // Close any pinned quotes when leaving canvas mode
+          active.forEach((stamp) => {
+            if (stamp.el) {
+              stamp.el.classList.remove("pinned-quote");
+              stamp.el._unhover && stamp.el._unhover(true);
+            }
+          });
         }
         active.forEach((stamp) => {
           if (mode === "canvas") {
