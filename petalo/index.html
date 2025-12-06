@@ -140,6 +140,7 @@
       stroke-width: 2;
       stroke-linecap: round;
       stroke-linejoin: round;
+      transform: rotate(var(--palette-rot, 0deg));
     }
     .palette-item:hover {
       transform: translateY(-2px);
@@ -150,17 +151,36 @@
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
     }
     #rotation-hint {
-      display: inline-flex;
-      gap: 6px;
+      display: flex;
+      gap: 8px;
       justify-content: center;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       width: 100%;
-      font-size: 16px;
-      letter-spacing: 6px;
-      color: #111;
-      opacity: 0.7;
+      opacity: 0.8;
       user-select: none;
+    }
+    .rotate-btn {
+      pointer-events: auto;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.22);
+      background: #fff;
+      color: #222;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .rotate-btn:hover {
+      background: #f5f5f5;
+    }
+    .rotate-btn:active {
+      background: #ededed;
     }
     #cursor-preview {
       position: absolute;
@@ -182,68 +202,6 @@
       stroke-width: 2;
       stroke-linecap: round;
       stroke-linejoin: round;
-    }
-    #rotate-controls {
-      position: absolute;
-      right: 14px;
-      bottom: 72px;
-      display: none;
-      gap: 8px;
-      z-index: 11;
-      pointer-events: none;
-    }
-    #rotate-controls .rotate-btn {
-      pointer-events: auto;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 1px solid rgba(0, 0, 0, 0.22);
-      background: #fff;
-      color: #222;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1;
-    }
-    #rotate-controls .rotate-btn:hover {
-      background: #f5f5f5;
-    }
-    #rotate-controls .rotate-btn:active {
-      background: #ededed;
-    }
-    #rotate-controls {
-      position: absolute;
-      right: 14px;
-      bottom: 72px;
-      display: none;
-      gap: 8px;
-      z-index: 11;
-      pointer-events: none;
-    }
-    #rotate-controls .rotate-btn {
-      pointer-events: auto;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 1px solid rgba(0, 0, 0, 0.22);
-      background: #fff;
-      color: #222;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1;
-    }
-    #rotate-controls .rotate-btn:hover {
-      background: #f5f5f5;
-    }
-    #rotate-controls .rotate-btn:active {
-      background: #ededed;
     }
     /* Keep the basemap barely visible but leave markers crisp */
     .maplibregl-canvas {
@@ -295,6 +253,7 @@
       overflow: visible;
       will-change: transform, opacity;
       pointer-events: auto;
+      z-index: 1;
     }
     .stamp.visible {
       opacity: 1;
@@ -307,7 +266,10 @@
     .stamp.hovered {
       opacity: 1;
       transform: translate(-50%, -50%) scale(1.35);
-      z-index: 20;
+      z-index: 10000;
+    }
+    .stamp.pinned-quote {
+      z-index: 10000;
     }
     .stamp .art {
       position: absolute;
@@ -339,6 +301,7 @@
       --quote-lift: 0px;
       --quote-tilt: 0deg;
       position: absolute;
+      z-index: 9999;
       left: 50%;
       bottom: 110%;
       transform: translate(calc(-50% + var(--quote-shift, 0px)), var(--quote-lift, 0px)) rotate(var(--quote-tilt, 0deg));
@@ -353,7 +316,7 @@
       overflow-wrap: break-word;
       text-align: center;
       white-space: normal;
-      background: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.9);
       backdrop-filter: blur(2px);
       text-shadow: 0 1px 2px rgba(255, 255, 255, 0.65);
       opacity: 0;
@@ -398,14 +361,13 @@
     <button id="clear-canvas" class="control-btn" type="button" title="Clear canvas" aria-label="Clear canvas"></button>
   </div>
   <div id="palette" hidden>
-    <div id="rotation-hint" hidden aria-hidden="true">↺ ↻</div>
+    <div id="rotation-hint" hidden aria-hidden="true">
+      <button class="rotate-btn" type="button" data-dir="-1" aria-label="Rotate left">↺</button>
+      <button class="rotate-btn" type="button" data-dir="1" aria-label="Rotate right">↻</button>
+    </div>
     <div class="palette-scroll"></div>
   </div>
   <div id="cursor-preview" aria-hidden="true"></div>
-  <div id="rotate-controls" aria-hidden="true">
-    <button class="rotate-btn" type="button" data-dir="-1" aria-label="Rotate left">↺</button>
-    <button class="rotate-btn" type="button" data-dir="1" aria-label="Rotate right">↻</button>
-  </div>
 
   <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
