@@ -62,7 +62,7 @@
       pointer-events: none;
     }
     #logo svg {
-      height: 40px;
+      height: 20px;
       width: auto;
       display: block;
       filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
@@ -102,39 +102,51 @@
     }
     .maplibregl-marker {
       position: absolute;
-      top: 0;
-      left: 0;
+      width: 120px;
+      height: 120px;
+      transform: translate(-50%, -50%);
       will-change: transform;
+      overflow: visible;
+      pointer-events: none;
     }
     .stamp-shell {
-      width: 48px;
-      height: 48px;
+      width: 96px;
+      height: 96px;
       position: absolute;
+      top: 0;
+      left: 0;
       transition: left 750ms ease, top 750ms ease;
+      overflow: visible;
+      pointer-events: none;
     }
     .stamp {
       --twist: 0deg;
       --stamp-color: var(--ink);
-      width: 100%;
-      height: 100%;
+      width: 52px;
+      height: 52px;
       opacity: 0;
-      transform: scale(0.7) rotate(var(--twist));
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.75) rotate(var(--twist));
       transition: opacity 700ms ease, transform 700ms ease;
       cursor: pointer;
-      position: relative;
       color: var(--stamp-color);
+      overflow: visible;
+      will-change: transform, opacity;
+      pointer-events: auto;
     }
     .stamp.visible {
-      opacity: 0.88;
-      transform: scale(1.05) rotate(var(--twist));
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.05) rotate(var(--twist));
     }
     .stamp.fading-out {
       opacity: 0;
-      transform: scale(0.4) rotate(var(--twist));
+      transform: translate(-50%, -50%) scale(0.65) rotate(var(--twist));
     }
     .stamp.hovered {
       opacity: 1;
-      transform: scale(1.45) rotate(var(--twist));
+      transform: translate(-50%, -50%) scale(1.35) rotate(var(--twist));
       z-index: 20;
     }
     .stamp svg {
@@ -146,7 +158,12 @@
       stroke-width: 2;
       stroke-linecap: round;
       stroke-linejoin: round;
+      overflow: visible;
       filter: drop-shadow(0 0.5px 1px var(--shadow));
+      transform: translate(0, 0);
+    }
+    .stamp svg [clip-path] {
+      clip-path: none !important;
     }
     .stamp .quote {
       --quote-shift: 0px;
@@ -241,6 +258,15 @@
       });
     }
 
+    // Strip problematic clip/mask definitions and attributes that can cause cross-marker clipping.
+    function sanitizeSvg(svg) {
+      return svg
+        .replace(/<clipPath[^>]*>[\s\S]*?<\/clipPath>/gi, "")
+        .replace(/<defs[^>]*>[\s\S]*?<\/defs>/gi, "")
+        .replace(/\sclip-path="url\(#.*?\)"/gi, "")
+        .replace(/\smask="url\(#.*?\)"/gi, "");
+    }
+
     function adjustQuotePosition(stamp) {
       const quote = stamp.el.querySelector(".quote");
       if (!quote) return;
@@ -296,10 +322,10 @@
       el.className = "stamp";
       const shade =
         Math.random() < 0.8
-          ? 8 + Math.random() * 18 // mostly dark impressions
-          : 35 + Math.random() * 35; // occasional lighter gray
+          ? 8 + Math.random() * 12 // mostly deep black
+          : 25 + Math.random() * 20; // occasional lighter gray
       el.style.setProperty("--stamp-color", `hsl(0, 0%, ${shade.toFixed(1)}%)`);
-      const pattern = pickStampSvg();
+      const pattern = sanitizeSvg(pickStampSvg());
       const rotation = Math.random() * 20 - 10;
       el.style.setProperty("--twist", `${rotation}deg`);
       el.innerHTML = `
