@@ -183,6 +183,68 @@
       stroke-linecap: round;
       stroke-linejoin: round;
     }
+    #rotate-controls {
+      position: absolute;
+      right: 14px;
+      bottom: 72px;
+      display: none;
+      gap: 8px;
+      z-index: 11;
+      pointer-events: none;
+    }
+    #rotate-controls .rotate-btn {
+      pointer-events: auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.22);
+      background: #fff;
+      color: #222;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    #rotate-controls .rotate-btn:hover {
+      background: #f5f5f5;
+    }
+    #rotate-controls .rotate-btn:active {
+      background: #ededed;
+    }
+    #rotate-controls {
+      position: absolute;
+      right: 14px;
+      bottom: 72px;
+      display: none;
+      gap: 8px;
+      z-index: 11;
+      pointer-events: none;
+    }
+    #rotate-controls .rotate-btn {
+      pointer-events: auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.22);
+      background: #fff;
+      color: #222;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    #rotate-controls .rotate-btn:hover {
+      background: #f5f5f5;
+    }
+    #rotate-controls .rotate-btn:active {
+      background: #ededed;
+    }
     /* Keep the basemap barely visible but leave markers crisp */
     .maplibregl-canvas {
       filter: grayscale(1) contrast(0.75) brightness(1.05);
@@ -340,6 +402,10 @@
     <div class="palette-scroll"></div>
   </div>
   <div id="cursor-preview" aria-hidden="true"></div>
+  <div id="rotate-controls" aria-hidden="true">
+    <button class="rotate-btn" type="button" data-dir="-1" aria-label="Rotate left">↺</button>
+    <button class="rotate-btn" type="button" data-dir="1" aria-label="Rotate right">↻</button>
+  </div>
 
   <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
@@ -1484,16 +1550,16 @@ const map = new maplibregl.Map({
       el.className = "stamp";
       const toneRoll = Math.random();
       const shade =
-        toneRoll < 0.5
-          ? 4 + Math.random() * 10 // deep
-          : toneRoll < 0.75
-          ? 14 + Math.random() * 12 // dark-mid
-          : toneRoll < 0.93
-          ? 26 + Math.random() * 12 // mid
-          : toneRoll < 0.99
-          ? 38 + Math.random() * 12 // mid-light
-          : 50 + Math.random() * 14; // rare light
-      const brightness = Math.min(1, 0.4 + (shade / 90) * 0.9); // broadened spread for clearer contrast
+        toneRoll < 0.52
+          ? 4 + Math.random() * 14 // deep blacks (most common)
+          : toneRoll < 0.72
+          ? 18 + Math.random() * 14 // dark
+          : toneRoll < 0.87
+          ? 32 + Math.random() * 18 // mid-dark
+          : toneRoll < 0.97
+          ? 50 + Math.random() * 16 // mid-light
+          : 66 + Math.random() * 12; // rare light
+      const brightness = Math.min(1, 0.28 + (shade / 110) * 1.05); // widen visible spread without opacity
       el.style.setProperty("--stamp-color", `hsl(0, 0%, ${shade.toFixed(1)}%)`);
       el.style.setProperty("--stamp-brightness", brightness.toFixed(2));
       const patternSrc =
@@ -1609,6 +1675,11 @@ const map = new maplibregl.Map({
             rotationHint.setAttribute("hidden", "");
           }
         }
+        if (rotateControls) {
+          const shouldShow = artistMode && mode === "canvas";
+          rotateControls.style.display = shouldShow ? "flex" : "none";
+          rotateControls.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+        }
         if (artistMode && mode === "canvas") {
           updateCursorPreviewGraphic();
         } else {
@@ -1654,6 +1725,8 @@ const map = new maplibregl.Map({
       const rotationHint = document.getElementById("rotation-hint");
       const cursorPreview = document.getElementById("cursor-preview");
       const clearCanvasBtn = document.getElementById("clear-canvas");
+      const rotateControls = document.getElementById("rotate-controls");
+      const rotateButtons = rotateControls ? rotateControls.querySelectorAll(".rotate-btn") : [];
       let lastCanvasPos = null;
       let mode = "map";
       currentMode = mode;
@@ -1956,10 +2029,11 @@ const map = new maplibregl.Map({
       }
 
       function resumeDropping() {
-        if (!paused) return;
         if (hoverDepth > 0) return;
         paused = false;
-        scheduleNextDrop();
+        if (!dropTimer) {
+          scheduleNextDrop();
+        }
       }
 
       function autoHighlightRandom() {
@@ -1986,6 +2060,14 @@ const map = new maplibregl.Map({
 
       autoHighlightTimer = setInterval(autoHighlightRandom, 2600);
 
+      rotateButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (!(artistMode && mode === "canvas")) return;
+          const dir = btn.dataset.dir === "-1" ? -1 : 1;
+          adjustArtistRotation(dir * 10);
+        });
+      });
+
       artistToggle.addEventListener("click", () => {
         const isOpen = !palette.hasAttribute("hidden");
         if (isOpen) {
@@ -2006,22 +2088,27 @@ const map = new maplibregl.Map({
         if (mode !== "canvas") return;
         Array.from(active).forEach((stamp) => cleanupStamp(stamp));
         hoverDepth = 0;
+        paused = false;
       });
 
       canvasLayer.addEventListener("mousemove", (e) => {
-        if (mode !== "canvas" || !artistMode) return;
+        if (mode !== "canvas") return;
         const rect = canvasLayer.getBoundingClientRect();
         lastCanvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        positionCursorPreview(e);
-        updateCursorPreviewGraphic();
+        if (artistMode) {
+          positionCursorPreview(e);
+          updateCursorPreviewGraphic();
+        }
       });
 
       canvasLayer.addEventListener("mouseenter", (e) => {
-        if (mode !== "canvas" || !artistMode) return;
+        if (mode !== "canvas") return;
         const rect = canvasLayer.getBoundingClientRect();
         lastCanvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        positionCursorPreview(e);
-        updateCursorPreviewGraphic();
+        if (artistMode) {
+          positionCursorPreview(e);
+          updateCursorPreviewGraphic();
+        }
       });
 
       canvasLayer.addEventListener("mouseleave", () => {
